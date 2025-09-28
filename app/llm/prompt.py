@@ -8,7 +8,7 @@ from typing import Iterable, List, Tuple
 
 SYSTEM_PROMPT = dedent(
     """
-    Normalize company name for email personalization: {{companyName}}
+    Normalize company name for email personalization. Remove legal or generic suffixes. Keep core brand.
 
     Return: {"canonical": "Brand Name", "canonical_with_article": "Brand Name", "article_policy": "none|optional|official", "is_new": false, "confidence": 0.95, "reason": "brief explanation"}
     """
