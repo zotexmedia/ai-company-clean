@@ -24,6 +24,11 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="Company Name Cleaner", version="1.0.0")
 
 
+@app.get("/")
+def root() -> dict:
+    return {"message": "Company Name Cleaner API", "version": "1.0.0", "status": "running"}
+
+
 def _job_to_resource(job: JobRun) -> JobResource:
     db_job = get_job(job.id)
     if db_job is None:

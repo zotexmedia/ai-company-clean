@@ -36,17 +36,21 @@ class LLMCallError(RuntimeError):
     pass
 
 
-def _extract_structured(choice: Any) -> Dict[str, Any]:
+def _extract_structured(message: Any) -> Dict[str, Any]:
     """Best-effort extraction of JSON payload from SDK response."""
-    if not getattr(choice, "content", None):
-        raise LLMCallError("Choice missing content")
-    for block in choice.content:
-        text = getattr(block, "text", None)
-        if text:
-            return json.loads(text)
-        if getattr(block, "type", None) == "output_text":  # SDK variations
-            return json.loads(block.text)
-    raise LLMCallError("Unable to extract JSON from response choice")
+    content = getattr(message, "content", None)
+    if not content:
+        raise LLMCallError("Message missing content")
+    
+    # For structured outputs, content should be a string with JSON
+    if isinstance(content, str):
+        return json.loads(content)
+    
+    # Fallback for other content formats
+    if hasattr(content, "text"):
+        return json.loads(content.text)
+    
+    raise LLMCallError("Unable to extract JSON from response message")
 
 
 def normalize_batch_gpt4o_mini(items: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -67,16 +71,15 @@ def normalize_batch_gpt4o_mini(items: Sequence[Dict[str, Any]]) -> List[Dict[str
         retry_suffix = item.get("retry_suffix") if isinstance(item, dict) else None
         conversation = build_conversation(item["raw_name"], retry_suffix=retry_suffix)
         logger.debug("Invoking OpenAI for id=%s", item["id"])
-        rsp = get_client().responses.create(
+        rsp = get_client().chat.completions.create(
             model=MODEL_NAME,
-            input=conversation,
+            messages=conversation,
             temperature=0,
             response_format=response_format,
         )
-        output_blocks = getattr(rsp, "output", None) or getattr(rsp, "choices", None)
-        if not output_blocks:
-            raise LLMCallError("Response missing output content")
-        payload = _extract_structured(output_blocks[0])
+        if not rsp.choices:
+            raise LLMCallError("Response missing choices")
+        payload = _extract_structured(rsp.choices[0].message)
         results.append(
             {
                 "id": item["id"],
