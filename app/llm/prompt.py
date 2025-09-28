@@ -8,46 +8,21 @@ from typing import Iterable, List, Tuple
 
 SYSTEM_PROMPT = dedent(
     """
-    Normalize company names to their core business identifiers. Return only valid JSON.
+    Normalize company names to core business identifiers. Output JSON only.
 
-    ## Pattern Recognition (evaluate all patterns, then apply highest priority match):
+    Rules (apply in order):
+    1) Remove any corporate/legal suffixes or professional entity designators (e.g., Inc, LLC, Ltd, LLP, PLLC, PC, Corp, PLC, GmbH, S.A., BV, NV, Oy, etc.), including punctuated or localized variants. Treat this list as non-exhaustive and remove equivalent forms by reasoning.
+    2) Remove location/qualifiers and parentheticals: phrases like "of <City/State>", "at <Place>", trailing state/country codes, "USA", and any text in parentheses.
+    3) Domains: if a TLD/extension (.com, .net, .org, .expert, etc.) is present, remove only the extension; do not split internal CamelCase or brand tokens.
+    4) Personal names (CRITICAL): if the name contains typical first name + last name pattern followed by designators like "& Associates", "Partners", "Law Firm", etc., extract ONLY the personal name. Examples: "Lee Mandel & Associates" → "Lee Mandel", "Robert Slayton & Associates" → "Robert Slayton", "John Smith Law Firm" → "John Smith". Do NOT add "the" to personal names.
+    5) Keep the core brand and keep exactly one meaningful industry head noun if present (e.g., Law, Dental, Packaging, Mortgage, Insurance, Accounting, Consulting, Advisors, Realty, Chiropractic, Exteriors, Painting, Automotive, Banking, Finance, Wealth Management, Asset Management, Investment Management, Report). Prefer keeping the head noun over removing it if uncertain.
+    6) Designators like Group, Partners, Firm, Associates, Company/Co.:
+       • If they are integral to how the brand is known and no other head noun remains (e.g., Wellington Group, Martin Group), keep them.
+       • If they appear as trailing fluff after a stronger head noun (e.g., "Hess Law Firm"), drop the designator and keep the head noun ("Hess Law").
+    7) Article rule: PRESERVE "The" if it's already part of the original company name (e.g., "The Wellington Group" stays "The Wellington Group"). Do NOT ADD "the" to company names that don't already have it (e.g., "Lee Mandel & Associates" stays "Lee Mandel & Associates", not "the Lee Mandel & Associates").
+    8) Cleanup: preserve obvious stylization (CamelCase, numerals, &), normalize commas/spaces, and avoid adding or inventing words.
 
-    ### PRIORITY 1: Personal Professional Practices
-    Pattern: [Personal Name] + [Professional Designator] + [Any Legal Suffix]
-    - Designators: & Associates, Partners, Law Firm, Law Office, Law Group
-    - Action: Extract ONLY the personal name
-    - Examples: 
-      - "John Smith & Associates LLC" → "John Smith"
-      - "Mary Chen Law Firm, PC" → "Mary Chen"
-
-    ### PRIORITY 2: Standard Business Names
-    Pattern: [Brand] + [Industry Noun] + [Generic Designator] + [Legal Suffix]
-    - Action: Keep brand + industry noun, remove designators and suffixes
-    - Examples:
-      - "Acme Software Solutions Inc" → "Acme Software"
-      - "Henderson Dental Associates PLLC" → "Henderson Dental"
-
-    ### PRIORITY 3: Branded Groups/Companies
-    Pattern: [Brand] + [Group/Partners/Company] + [Legal Suffix]
-    - Action: Keep brand + designator (when no industry noun exists)
-    - Examples:
-      - "The Wellington Group Inc" → "The Wellington Group"
-      - "Anderson Partners LLC" → "Anderson Partners"
-
-    ### PRIORITY 4: Simple Names
-    Pattern: [Brand] + [Legal Suffix only]
-    - Action: Remove legal suffix only
-    - Examples:
-      - "Microsoft Corporation" → "Microsoft"
-      - "Google LLC" → "Google"
-
-    ## Universal Cleanup Rules (apply to final result):
-    - Remove geographic modifiers: "of [Place]", state codes, parentheticals
-    - Remove domain extensions: .com, .net, .org, etc.
-    - Preserve existing "The" but never add it
-    - Maintain original capitalization and ampersands
-
-    Output format: {"canonical": "[normalized name]"}
+    Return: {"canonical": "Brand Name"}
     """
 ).strip()
 
