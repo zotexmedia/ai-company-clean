@@ -5,9 +5,10 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Sequence
+from typing import Any, Dict, List, Sequence
 
 from openai import OpenAI
+from openai.types.responses import ResponseFormatTextJSONSchemaConfig, ResponseTextConfig
 
 from app.llm.prompt import build_conversation
 
@@ -44,7 +45,7 @@ def _extract_structured(choice: Any) -> Dict[str, Any]:
         text = getattr(block, "text", None)
         if text:
             return json.loads(text)
-        if getattr(block, "type", None) == "output_text":  # SDK 1.40+
+        if getattr(block, "type", None) == "output_text":  # SDK variations
             return json.loads(block.text)
     raise LLMCallError("Unable to extract JSON from response choice")
 
@@ -53,7 +54,14 @@ def normalize_batch_gpt4o_mini(items: Sequence[Dict[str, Any]]) -> List[Dict[str
     """Call OpenAI once per item (placeholder until multi-input batching is GA)."""
     schema = load_schema()
     results: List[Dict[str, Any]] = []
-    response_format = {"type": "json_schema", "json_schema": {"name": "CompanyCanon", "schema": schema}}
+
+    text_cfg = ResponseTextConfig(
+        format=ResponseFormatTextJSONSchemaConfig(
+            type="json_schema",
+            name="CompanyCanon",
+            schema=schema,
+        )
+    )
 
     for item in items:
         retry_suffix = item.get("retry_suffix") if isinstance(item, dict) else None
@@ -63,7 +71,7 @@ def normalize_batch_gpt4o_mini(items: Sequence[Dict[str, Any]]) -> List[Dict[str
             model=MODEL_NAME,
             input=conversation,
             temperature=0,
-            response_format=response_format,
+            text=text_cfg,
         )
         output_blocks = getattr(rsp, "output", None) or getattr(rsp, "choices", None)
         if not output_blocks:

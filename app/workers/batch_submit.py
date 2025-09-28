@@ -25,12 +25,12 @@ def build_jsonl(records: Iterable[str], destination: Path) -> Path:
                 "response": {
                     "model": BATCH_MODEL,
                     "input": build_conversation(raw),
-                    "response_format": {
-                        "type": "json_schema",
-                        "json_schema": {
+                    "text": {
+                        "format": {
+                            "type": "json_schema",
                             "name": "CompanyCanon",
                             "schema": schema,
-                        },
+                        }
                     },
                 },
             }
