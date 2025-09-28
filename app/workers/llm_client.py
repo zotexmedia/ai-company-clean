@@ -15,7 +15,7 @@ from app.llm.prompt import build_conversation
 
 logger = logging.getLogger(__name__)
 
-MODEL_NAME = "gpt-4o"  # Upgraded for better quality
+MODEL_NAME = "gpt-4o-mini"  # Cost-effective with improved prompts
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "llm" / "structured_schema.json"
 
 
