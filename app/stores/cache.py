@@ -15,7 +15,7 @@ from app.llm.postprocess import min_clean
 from app.stores import ann
 
 TTL_SECONDS = 60 * 60 * 24 * 365
-CACHE_VERSION = "v6"  # GPT-5 with refined email personalization prompt
+CACHE_VERSION = "v7"  # GPT-5 with comprehensive normalization rules
 
 # Fallback in-memory cache when Redis is unavailable
 _memory_cache: Dict[str, tuple[Dict[str, Any], float]] = {}
