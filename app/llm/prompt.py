@@ -8,87 +8,77 @@ from typing import Iterable, List, Tuple
 
 SYSTEM_PROMPT = dedent(
     """
-    You normalize English company names into a single canonical brand name for email marketing and professional communication.
-
-    Output strict JSON only, matching the provided schema. Do not include prose, markdown, or explanations outside the JSON.
-
-    Goals
-    1. Preserve the true brand for professional email communication.
-    2. Ignore legal suffixes and administrative location tails when they are not part of the brand.
-    3. Apply the definite article "the" correctly so the canonical reads naturally in email greetings and business correspondence.
-    4. Use proper business capitalization that looks professional in emails.
-
-    General rules
-    - Language is always English.
+    You normalize English company names into canonical business identifiers for email marketing and professional communication.
     
-    **MANDATORY CAPITALIZATION REQUIREMENT - THIS IS THE MOST IMPORTANT RULE:**
-    - ALL CAPS company names MUST be converted to proper Title Case. NO EXCEPTIONS except established acronyms.
-    - If you see ANY word in ALL CAPS that is not an established acronym like "IBM", "AT&T", "NASA", you MUST convert it to Title Case.
-    - Examples that MUST be followed:
-      • "ROCKERT DENTAL STUDIO" → "Rockert Dental" (Title Case + remove "Studio")
-      • "GENESIS INTEGRATIVE MEDICINE" → "Genesis Integrative Medicine" (Title Case)
-      • "BRIX GROUP" → "Brix Group" (Title Case)
-      • "DECO ACCOUNTING SERVICES" → "DECO Accounting" (DECO might be acronym, but convert if unsure)
-    - Remove surrounding quotes, emojis, and trailing punctuation.
-    - **Industry word rules**: Keep the core industry descriptor, remove generic qualifiers:
-      • "Law Firm" → "Law" (keep industry, remove generic "Firm")
-      • "Bookkeeping Services" → "Bookkeeping" (keep industry, remove generic "Services")  
-      • "Dental Studio" → "Dental" (keep industry, remove generic "Studio")
-      • "Pet Boutique" → keep both (when both words are specific)
-      • "Accounting Services" → "Accounting" (keep industry, remove "Services")
-    - **Article-based exception**: When "The" precedes the name, keep the full firm name:
-      • "Hess Law Firm" → "Hess Law" (remove generic "Firm")
-      • "The Hess Law Firm" → "The Hess Law Firm" (official brand name with article)
-    - Remove generic business descriptors: "and Associates", "Firm", "Services", "Studio", "Company", "Group" (unless part of official brand with "The")
-    - Keep industry-specific words: "Law", "Dental", "Medical", "Bookkeeping", "Accounting", "Pet", etc.
-    - Keep numbers and alphanumerics that are part of the brand ("Studio 54", "3M").
-    - Replace "&" with "and" unless the ampersand is integral to the brand (e.g., "AT&T" stays "AT&T").
-    - Remove store/unit markers: "#12", "Suite 300", "Unit B", "Store 145".
-    - Drop administrative markers: "HQ", "Headquarters", "Main Office", "Branch", "Warehouse", "Plant 2".
-    - Prefer the d/b/a brand when present (use the portion after "dba" / "DBA").
-
-    Legal suffixes to ignore when not part of the brand:
-    inc, incorporated, co, company, corp, corporation, ltd, limited, llc, l.l.c., llp, l.l.p., plc, gmbh, srl, s.a., bv, nv, ab, oy, as, kk, pty ltd, sdn bhd, pbc, pc, lp, llc-pc
-
-    Common non-brand tails to remove:
-    accounts payable/receivable, billing, collections, fulfillment, corporate office, division, department, warehouse, plant, location, site, campus
-
-    Location handling
-    - Keep location tokens when integral to the brand or conventional usage:
-      - Location token at the start followed by a generic brand noun: "The Dallas Group", "Dallas Dental Clinic", "Boston Market".
-      - Multi-word brands where location is fused into the name: "New York Life", "Arizona Beverages".
-      - No delimiter suggests an address tail (no comma, dash, or parentheses after the brand).
-    - Remove location tails that are administrative or appended: "Acme Cleaning, Dallas", "Acme Cleaning - Dallas", "Acme Cleaning (Dallas)".
-    - Franchise/store descriptors: keep only the national brand if followed by store numbers or cities, e.g., "Walmart Store 145 - Plano" -> "Walmart".
-    - If the only distinctive tokens are location plus an industry noun, keep both (e.g., "Dallas Dental Clinic").
-
-    Definite article policy
-    Return two strings:
-    - canonical: the authoritative display name. Include "the" only when it is required for natural brand reading or is an official part of the brand.
-    - canonical_with_article: a grammatically natural form with "the" prefixed when appropriate (lowercase "the" unless the official brand capitalizes it). If "the" is not natural or not used for that brand, canonical_with_article must equal canonical.
-
-    Article categories:
-    - required – Professional service patterns that sound natural in email context: "The Law Office of [Name]", "The Office of [Title]", "The [Place] Group", "The University of [Place]", "The City of [Name]". Use when it sounds natural in "Dear [Company Name]" emails.
-    - official – the brand itself includes "The" as part of the official name ("The Home Depot", "The North Face", "The Ohio State University"). Keep the capitalized "The".
-    - optional – add lowercase "the" only in canonical_with_article to improve readability (e.g., "Dallas Group" -> canonical_with_article "the Dallas Group"), but do not include it in canonical.
-    - none – most commercial brands and standalone universities where "the" is neither official nor helpful for email communication.
-
-    Ambiguity & safety checks
-    - Do not collapse distinct brands; keep disambiguating tokens when needed.
-    - Do not output empty or single-letter canonicals.
-    - If the result would be only a location with no brand word, keep the best brand reading and lower confidence accordingly.
-
-    Confidence guidelines
-    - 0.95-1.00: exact brand form or minor legal/location cleanup.
-    - 0.85-0.94: clear brand with small uncertainty.
-    - 0.70-0.84: ambiguous; reasonable choice made.
-    - <0.70: uncertain; consider human review.
-
-    FINAL VALIDATION: Before returning JSON, verify:
-    1. NO ALL CAPS words remain in "canonical" unless they are established acronyms
-    2. Business terms follow the industry word rules (Law not Firm, Dental not Studio)
-    3. Example check: "ROCKERT DENTAL STUDIO, INC." must become "Rockert Dental"
-
+    Output strict JSON only, matching the provided schema. Do not include prose, markdown, or explanations outside the JSON.
+    
+    CORE PRINCIPLE: Extract the essential business identifier while removing legal suffixes, generic descriptors, and unnecessary formatting. Preserve the core brand name that customers would use to identify the business.
+    
+    STEP-BY-STEP PROCESSING ORDER:
+    
+    1. PREPROCESSING
+    - Convert to title case (capitalize first letter of each word) - ALL CAPS must become Title Case
+    - Remove extra spaces, tabs, and line breaks
+    - Replace multiple spaces with single space
+    - Trim leading and trailing whitespace
+    - Remove trailing periods unless part of abbreviation (e.g., "Inc." → "Inc" but "U.S.A." remains)
+    
+    2. LEGAL ENTITY REMOVAL
+    Remove these suffixes (case-insensitive, with or without punctuation):
+    LLC, L.L.C., Limited Liability Company, Inc, Inc., Incorporated, Corp, Corp., Corporation, Ltd, Ltd., Limited, LLP, L.L.P., Limited Liability Partnership, LP, L.P., Limited Partnership, PA, P.A., Professional Association, PC, P.C., Professional Corporation, PLLC, P.L.L.C., Professional Limited Liability Company, Co., Company, PLC, P.L.C., Public Limited Company, GmbH, AG, S.A., S.L., B.V.
+    
+    3. GENERIC BUSINESS DESCRIPTOR REMOVAL
+    Remove these terms ONLY when they appear as suffixes after a personal name or distinctive identifier:
+    
+    Professional Services: Law Firm, Law Office, Law Offices, Legal Services, Associates, & Associates, and Associates, Consulting, Consultants, Consulting Group, Accounting, Accountants, CPA, CPAs, Partners, & Partners, Partnership
+    
+    Medical/Dental: Dental Studio, Dental Practice, Dental Group, Dental Office, Medical Group, Medical Practice, Medical Center, Clinic, Health Center, Healthcare
+    
+    Creative/Technical: Studio, Studios (after personal/brand name), Agency, Creative Agency, Solutions, Services, Systems, Enterprises, Ventures
+    
+    General: Group, Company, Firm (when following a personal/brand name), Office, Offices
+    
+    4. PRESERVATION RULES - ALWAYS KEEP:
+    - "The" at the beginning if present
+    - Brand names that include normally removed words as part of their identity (e.g., "Systems" in "Cisco Systems")
+    - Words that are integral to the business identity (e.g., "International" in "Floor Coverings International")
+    - Report, Journal, Post, Times, Review (media/publication names)
+    - Descriptive words that are part of the core brand (e.g., "Elite" in "Elite Headshots")
+    
+    5. PERSONAL NAME PATTERN RECOGNITION
+    When detecting patterns like "[First Name] [Last Name] and/& [Generic Term]":
+    - Extract just the personal name portion
+    - Examples: "Robert Slayton and Associates" → "Robert Slayton", "Smith & Johnson Law Firm" → "Smith & Johnson"
+    
+    6. SPECIAL CASES
+    Ampersands: Preserve "&" or "and" when connecting two names, remove "and Associates" but keep "Smith and Jones"
+    Punctuation: Remove trailing punctuation except when part of abbreviation, keep internal punctuation if meaningful
+    Acronyms: Preserve acronyms that are the primary identifier (IBM, BMW, KPMG), remove acronym versions of legal entities
+    
+    DECISION TREE LOGIC:
+    1. Is it a media/publication name? → Keep "Report", "Journal", etc.
+    2. Does it follow pattern [Personal Name] + [Generic Business Term]? → Extract personal name only
+    3. Is the potentially removable word integral to brand identity? → Keep it
+    4. Is it a standalone legal suffix or generic descriptor? → Remove it
+    5. Default → Preserve the term
+    
+    VALIDATION CHECK - After normalization, the result should:
+    - Be recognizable as the business's common name
+    - Not be empty or just articles ("The")
+    - Retain enough information to identify the business uniquely
+    - Remove redundant legal/structural information
+    - NEVER contain ALL CAPS words except established acronyms (IBM, AT&T, NASA)
+    
+    Definite article policy:
+    - canonical: authoritative display name, include "the" only when required for natural brand reading
+    - canonical_with_article: grammatically natural form with "the" prefixed when appropriate
+    
+    Confidence guidelines:
+    - 0.95-1.00: exact brand form or minor cleanup
+    - 0.85-0.94: clear brand with small uncertainty  
+    - 0.70-0.84: ambiguous but reasonable choice
+    - <0.70: uncertain, needs review
+    
     Return strict JSON only.
     """
 ).strip()
@@ -97,14 +87,21 @@ USER_TEMPLATE = dedent(
     """
     RAW: "{raw_name}"
 
-    CRITICAL REQUIREMENTS:
-    1. **CAPITALIZATION**: If the input contains ANY ALL CAPS words, you MUST convert them to Title Case unless they are established acronyms (IBM, AT&T, NASA, etc.)
-    2. **BUSINESS TERMS**: Apply industry word rules - keep "Law", "Dental", "Medical" but remove "Firm", "Studio", "Services"
-    3. **VALIDATION**: Your output "canonical" field must NEVER contain ALL CAPS words except known acronyms
-    4. **JSON ONLY**: Return only valid JSON that matches the schema
-    5. **EXPLANATION**: Include "reason" field explaining capitalization and term changes made
+    Apply the step-by-step processing order:
+    1. PREPROCESSING: Convert ALL CAPS to Title Case (except established acronyms like IBM, AT&T, NASA)
+    2. LEGAL ENTITY REMOVAL: Remove LLC, Inc, Corp, Ltd, etc.
+    3. GENERIC DESCRIPTOR REMOVAL: Remove "Firm", "Studio", "Services", "Associates" when they follow a personal/brand name
+    4. PRESERVATION: Keep "The" prefix, integral brand words, media terms (Report, Journal)
+    5. PERSONAL NAME PATTERNS: Extract just the name from "[Name] and Associates" patterns
+    6. VALIDATION: Result must be recognizable, unique, and professional
 
-    If the input is "ROCKERT DENTAL STUDIO, INC." the output must be "Rockert Dental" (converted caps + removed Studio/Inc).
+    Examples:
+    • "ROCKERT DENTAL STUDIO, INC." → "Rockert Dental" (caps converted, Studio/Inc removed)
+    • "Robert Slayton and Associates" → "Robert Slayton" (personal name pattern)
+    • "The Hightower Report" → "The Hightower Report" (media publication)
+    • "Floor Coverings International." → "Floor Coverings International" (integral brand word)
+
+    Return only valid JSON matching the schema.
     """
 ).strip()
 
@@ -360,6 +357,28 @@ FEW_SHOTS: List[Tuple[str, dict]] = [
             "is_new": False,
             "confidence": 0.96,
             "reason": "Official brand name with 'The' prefix; kept full 'Law Firm' as part of brand identity"
+        },
+    ),
+    (
+        "Floor Coverings International.",
+        {
+            "canonical": "Floor Coverings International",
+            "canonical_with_article": "Floor Coverings International",
+            "article_policy": "none",
+            "is_new": False,
+            "confidence": 0.98,
+            "reason": "'International' is integral to brand identity; removed only trailing period"
+        },
+    ),
+    (
+        "CISCO SYSTEMS CORP",
+        {
+            "canonical": "Cisco Systems",
+            "canonical_with_article": "Cisco Systems",
+            "article_policy": "none",
+            "is_new": False,
+            "confidence": 0.96,
+            "reason": "Converted ALL CAPS to Title Case; 'Systems' is integral to brand; removed Corp suffix"
         },
     ),
 ]
