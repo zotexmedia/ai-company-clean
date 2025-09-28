@@ -23,12 +23,14 @@ SYSTEM_PROMPT = dedent(
     - Canonical should use proper Title Case for professional appearance in emails. Avoid ALL CAPS unless it's an established acronym/brand (e.g., "IBM", "AT&T").
     - Convert ALL CAPS company names to proper Title Case (e.g., "GENESIS INTEGRATIVE MEDICINE" → "Genesis Integrative Medicine").
     - Remove surrounding quotes, emojis, and trailing punctuation.
+    - **PRESERVE industry/service words that are part of the brand identity**: "Bookkeeping Services", "Law Firm", "Pet Boutique", "Dental Studio", etc. These distinguish the business and should be kept.
     - Keep meaningful industry words that distinguish sibling brands ("Acme Cleaning" vs "Acme Pest Control").
     - Keep numbers and alphanumerics that are part of the brand ("Studio 54", "3M").
     - Replace "&" with "and" unless the ampersand is integral to the brand (e.g., "AT&T" stays "AT&T").
     - Remove store/unit markers: "#12", "Suite 300", "Unit B", "Store 145".
     - Drop administrative markers: "HQ", "Headquarters", "Main Office", "Branch", "Warehouse", "Plant 2", unless integral to the brand (e.g., "HQ Trivia").
     - Prefer the d/b/a brand when present (use the portion after "dba" / "DBA").
+    - **CRITICAL**: Do not remove words like "Services", "Firm", "Boutique", "Studio", "Group" when they're part of the actual business name/brand.
 
     Legal suffixes to ignore when not part of the brand:
     inc, incorporated, co, company, corp, corporation, ltd, limited, llc, l.l.c., llp, l.l.p., plc, gmbh, srl, s.a., bv, nv, ab, oy, as, kk, pty ltd, sdn bhd, pbc, pc, lp, llc-pc
@@ -246,6 +248,39 @@ FEW_SHOTS: List[Tuple[str, dict]] = [
             "is_new": False,
             "confidence": 0.95,
             "reason": "Converted ALL CAPS to Title Case; removed Inc suffix"
+        },
+    ),
+    (
+        "Ferrari Bookkeeping Services LLC",
+        {
+            "canonical": "Ferrari Bookkeeping Services",
+            "canonical_with_article": "Ferrari Bookkeeping Services",
+            "article_policy": "none",
+            "is_new": False,
+            "confidence": 0.96,
+            "reason": "Preserved 'Services' as part of brand identity; removed LLC suffix"
+        },
+    ),
+    (
+        "Legacy and Life Law Firm, PC",
+        {
+            "canonical": "Legacy and Life Law Firm",
+            "canonical_with_article": "Legacy and Life Law Firm",
+            "article_policy": "none",
+            "is_new": False,
+            "confidence": 0.95,
+            "reason": "Preserved 'Law Firm' as essential brand descriptor; removed PC suffix"
+        },
+    ),
+    (
+        "Two Bostons Pet Boutique",
+        {
+            "canonical": "Two Bostons Pet Boutique",
+            "canonical_with_article": "Two Bostons Pet Boutique",
+            "article_policy": "none",
+            "is_new": False,
+            "confidence": 0.96,
+            "reason": "Preserved full business name including 'Pet Boutique' specialty"
         },
     ),
 ]
