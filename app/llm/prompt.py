@@ -221,25 +221,20 @@ def few_shot_messages() -> Iterable[dict]:
     for raw, payload in FEW_SHOTS:
         yield {
             "role": "user",
-            "content": [{"type": "input_text", "text": build_user_message(raw)}],
+            "content": build_user_message(raw),
         }
         yield {
             "role": "assistant",
-            "content": [
-                {
-                    "type": "output_text",
-                    "text": json.dumps(payload, separators=(",", ":")),
-                }
-            ],
+            "content": json.dumps(payload, separators=(",", ":")),
         }
 
 
 def build_conversation(raw_name: str, retry_suffix: str | None = None) -> List[dict]:
     return [
-        {"role": "system", "content": [{"type": "input_text", "text": SYSTEM_PROMPT}]},
+        {"role": "system", "content": SYSTEM_PROMPT},
         *few_shot_messages(),
         {
             "role": "user",
-            "content": [{"type": "input_text", "text": build_user_message(raw_name, retry_suffix=retry_suffix)}],
+            "content": build_user_message(raw_name, retry_suffix=retry_suffix),
         },
     ]
