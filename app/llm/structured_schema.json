@@ -13,7 +13,8 @@
     "canonical_with_article",
     "article_policy",
     "is_new",
-    "confidence"
+    "confidence",
+    "reason"
   ],
   "additionalProperties": false
 }

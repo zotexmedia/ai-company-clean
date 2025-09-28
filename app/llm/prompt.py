@@ -76,6 +76,7 @@ USER_TEMPLATE = dedent(
     Guidelines to apply:
     • Follow the rules and the definite article policy exactly.
     • Return only valid JSON that matches the schema.
+    • Always include the "reason" field with a brief explanation of what was kept or removed.
     """
 ).strip()
 

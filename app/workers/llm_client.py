@@ -54,12 +54,13 @@ def normalize_batch_gpt4o_mini(items: Sequence[Dict[str, Any]]) -> List[Dict[str
     schema = load_schema()
     results: List[Dict[str, Any]] = []
 
-    text_cfg: Dict[str, Any] = {
-        "format": {
-            "type": "json_schema",
+    response_format = {
+        "type": "json_schema",
+        "json_schema": {
             "name": "CompanyCanon",
             "schema": schema,
-        }
+            "strict": True,
+        },
     }
 
     for item in items:
@@ -70,7 +71,7 @@ def normalize_batch_gpt4o_mini(items: Sequence[Dict[str, Any]]) -> List[Dict[str
             model=MODEL_NAME,
             input=conversation,
             temperature=0,
-            text=text_cfg,
+            response_format=response_format,
         )
         output_blocks = getattr(rsp, "output", None) or getattr(rsp, "choices", None)
         if not output_blocks:

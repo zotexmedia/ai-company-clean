@@ -90,7 +90,7 @@ class GuardrailResult:
     article_policy: str
     is_new: bool
     confidence: float
-    reason: Optional[str]
+    reason: str
     key_form: str
     display_form: str
     raw_reason: Optional[str]
@@ -107,7 +107,7 @@ def apply_guardrails(raw_name: str, payload: Dict[str, object]) -> GuardrailResu
     article_policy = str(payload.get("article_policy", "none")).strip().lower()
     is_new = bool(payload.get("is_new", False))
     confidence = float(payload.get("confidence", 0.0))
-    reason = payload.get("reason")
+    reason_raw = payload.get("reason")
     flags: List[str] = []
 
     if article_policy not in VALID_ARTICLE_POLICIES:
@@ -135,16 +135,22 @@ def apply_guardrails(raw_name: str, payload: Dict[str, object]) -> GuardrailResu
         cleaned_display = clean_company_name(raw_name)
         flags.append("fallback_display")
 
+    reason_str = ""
+    if isinstance(reason_raw, str):
+        reason_str = reason_raw.strip()
+    elif reason_raw is not None:
+        reason_str = str(reason_raw)
+
     return GuardrailResult(
         canonical=canonical,
         canonical_with_article=canonical_with_article,
         article_policy=article_policy,
         is_new=is_new,
         confidence=confidence,
-        reason=reason if isinstance(reason, str) and reason.strip() else None,
+        reason=reason_str,
         key_form=key_form,
         display_form=cleaned_display,
-        raw_reason=reason if isinstance(reason, str) else None,
+        raw_reason=reason_raw if isinstance(reason_raw, str) else None,
         flags=tuple(flags),
     )
 

@@ -48,8 +48,11 @@ def test_retry_invalid_output(memory_cache, noop_db, monkeypatch):
                     "raw_name": items[0]["raw_name"],
                     "payload": {
                         "canonical": "",
+                        "canonical_with_article": "",
+                        "article_policy": "none",
                         "is_new": False,
                         "confidence": 0.9,
+                        "reason": None,
                     },
                 }
             ]
@@ -98,6 +101,7 @@ def test_guardrail_low_overlap(memory_cache, noop_db, monkeypatch):
                     "article_policy": "none",
                     "is_new": True,
                     "confidence": 0.95,
+                    "reason": "",
                 },
             }
         ]
