@@ -26,12 +26,20 @@ app = FastAPI(title="Company Name Cleaner", version="1.0.0")
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize database tables on startup."""
+    """Initialize database tables and clear stale caches on startup."""
     try:
         init_models()
         logger.info("Database tables initialized successfully")
     except Exception as e:
         logger.warning("Database initialization failed (continuing without persistence): %s", str(e))
+    
+    # Clear memory cache to ensure new normalization rules apply
+    try:
+        from app.stores.cache import clear_memory_cache
+        clear_memory_cache()
+        logger.info("Memory cache cleared for new normalization rules")
+    except Exception as e:
+        logger.warning("Failed to clear memory cache: %s", str(e))
 
 
 @app.get("/")

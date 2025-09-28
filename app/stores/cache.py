@@ -15,11 +15,17 @@ from app.llm.postprocess import min_clean
 from app.stores import ann
 
 TTL_SECONDS = 60 * 60 * 24 * 365
-CACHE_VERSION = "v1"
+CACHE_VERSION = "v2"  # Incremented for comprehensive normalization rules update
 
 # Fallback in-memory cache when Redis is unavailable
 _memory_cache: Dict[str, tuple[Dict[str, Any], float]] = {}
 _redis_available = None
+
+
+def clear_memory_cache() -> None:
+    """Clear the in-memory cache fallback."""
+    global _memory_cache
+    _memory_cache.clear()
 
 
 @lru_cache(maxsize=1)
@@ -119,6 +125,7 @@ def warm_cache(entries: Dict[str, Dict[str, Any]]) -> None:
 __all__ = [
     "cache_get",
     "cache_set",
+    "clear_memory_cache",
     "exact_cache_key",
     "get_client",
     "near_dupe_lookup",
