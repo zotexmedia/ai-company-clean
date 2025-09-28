@@ -15,7 +15,7 @@ from app.llm.postprocess import min_clean
 from app.stores import ann
 
 TTL_SECONDS = 60 * 60 * 24 * 365
-CACHE_VERSION = "v2"  # Incremented for comprehensive normalization rules update
+CACHE_VERSION = "v3"  # Ultra-minimal prompts for <$500/month budget
 
 # Fallback in-memory cache when Redis is unavailable
 _memory_cache: Dict[str, tuple[Dict[str, Any], float]] = {}
