@@ -113,63 +113,69 @@ def upsert_alias_result(
     job_id: Optional[uuid.UUID] = None,
 ) -> None:
     """Persist canonical + alias rows, maintaining aggregates."""
-    now = dt.datetime.utcnow().replace(tzinfo=dt.timezone.utc)
-    with session_scope() as session:
-        canonical = session.execute(
-            select(CanonicalCompany).where(CanonicalCompany.key_form == result.key_form)
-        ).scalar_one_or_none()
+    try:
+        now = dt.datetime.utcnow().replace(tzinfo=dt.timezone.utc)
+        with session_scope() as session:
+            canonical = session.execute(
+                select(CanonicalCompany).where(CanonicalCompany.key_form == result.key_form)
+            ).scalar_one_or_none()
 
-        if not canonical:
-            canonical = CanonicalCompany(
-                canonical_name=result.display_form,
-                key_form=result.key_form,
-                first_seen=now,
-                last_seen=now,
-                confidence_avg=result.confidence,
-                aliases_count=1,
-            )
-            session.add(canonical)
-            session.flush()
-        else:
-            # Online EMA update for confidence average.
-            new_avg = (
-                (canonical.confidence_avg * canonical.aliases_count + result.confidence)
-                / max(canonical.aliases_count + 1, 1)
-            )
-            canonical.confidence_avg = new_avg
-            canonical.aliases_count += 1
-            canonical.last_seen = now
+            if not canonical:
+                canonical = CanonicalCompany(
+                    canonical_name=result.display_form,
+                    key_form=result.key_form,
+                    first_seen=now,
+                    last_seen=now,
+                    confidence_avg=result.confidence,
+                    aliases_count=1,
+                )
+                session.add(canonical)
+                session.flush()
+            else:
+                # Online EMA update for confidence average.
+                new_avg = (
+                    (canonical.confidence_avg * canonical.aliases_count + result.confidence)
+                    / max(canonical.aliases_count + 1, 1)
+                )
+                canonical.confidence_avg = new_avg
+                canonical.aliases_count += 1
+                canonical.last_seen = now
 
-        alias = session.execute(
-            select(Alias).where(Alias.alias_name == raw_name, Alias.canonical_id == canonical.id)
-        ).scalar_one_or_none()
+            alias = session.execute(
+                select(Alias).where(Alias.alias_name == raw_name, Alias.canonical_id == canonical.id)
+            ).scalar_one_or_none()
 
-        if alias:
-            alias.last_seen = now
-            alias.confidence_last = result.confidence
-            alias.details = {
-                "flags": list(result.flags),
-                "reason": result.raw_reason,
-                "canonical_with_article": result.canonical_with_article,
-                "article_policy": result.article_policy,
-            }
-        else:
-            alias = Alias(
-                alias_name=raw_name,
-                canonical_id=canonical.id,
-                source=source,
-                confidence_last=result.confidence,
-                details={
+            if alias:
+                alias.last_seen = now
+                alias.confidence_last = result.confidence
+                alias.details = {
                     "flags": list(result.flags),
                     "reason": result.raw_reason,
                     "canonical_with_article": result.canonical_with_article,
                     "article_policy": result.article_policy,
-                },
-            )
-            session.add(alias)
+                }
+            else:
+                alias = Alias(
+                    alias_name=raw_name,
+                    canonical_id=canonical.id,
+                    source=source,
+                    confidence_last=result.confidence,
+                    details={
+                        "flags": list(result.flags),
+                        "reason": result.raw_reason,
+                        "canonical_with_article": result.canonical_with_article,
+                        "article_policy": result.article_policy,
+                    },
+                )
+                session.add(alias)
 
-        if job_id:
-            increment_job_progress(session, job_id, success_delta=1)
+            if job_id:
+                increment_job_progress(session, job_id, success_delta=1)
+    except Exception as e:
+        # Database unavailable - log and continue without persistence
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning("Database unavailable, skipping persistence: %s", str(e))
 
 
 def record_job(job: JobRun) -> uuid.UUID:
