@@ -15,7 +15,7 @@ from app.llm.postprocess import min_clean
 from app.stores import ann
 
 TTL_SECONDS = 60 * 60 * 24 * 365
-CACHE_VERSION = "v8"  # GPT-5 with refined comprehensive rules and global suffix handling
+CACHE_VERSION = "v9"  # Performance optimized: removed confidence/reason, disabled Supabase, 25x concurrency
 
 # Fallback in-memory cache when Redis is unavailable
 _memory_cache: Dict[str, tuple[Dict[str, Any], float]] = {}

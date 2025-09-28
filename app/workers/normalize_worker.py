@@ -20,7 +20,7 @@ from app.workers.llm_client import LLMCallError, normalize_batch_gpt4o_mini, loa
 
 logger = logging.getLogger(__name__)
 
-BATCH_SIZE = int(os.getenv("BATCH_SIZE", 100))  # Increased for better performance
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", 200))  # Optimized for Tier 2 performance
 INVALID_SUFFIX = "Invalid JSON, return valid JSON only."
 
 
@@ -78,7 +78,7 @@ class NormalizationService:
             if cached_payload:
                 guard = apply_guardrails(record.raw_name, cached_payload)
                 outputs.append(self._to_response(record, guard, cached=True))
-                upsert_alias_result(record.raw_name, guard, record.source, getattr(job, "id", None))
+                # upsert_alias_result(record.raw_name, guard, record.source, getattr(job, "id", None))  # Disabled for performance
                 continue
 
             near_payload = near_dupe_lookup(record.raw_name)
@@ -86,7 +86,7 @@ class NormalizationService:
                 guard = apply_guardrails(record.raw_name, near_payload)
                 cache_set(cache_key, near_payload)
                 outputs.append(self._to_response(record, guard, cached=True))
-                upsert_alias_result(record.raw_name, guard, record.source, getattr(job, "id", None))
+                # upsert_alias_result(record.raw_name, guard, record.source, getattr(job, "id", None))  # Disabled for performance
                 continue
 
             pending.append(PendingItem(
@@ -104,7 +104,7 @@ class NormalizationService:
                 record = lookup_by_id[item_id]
                 guard = apply_guardrails(record.raw_name, payload)
                 cache_set(cache_key_by_id[item_id], payload)
-                upsert_alias_result(record.raw_name, guard, record.source, getattr(job, "id", None))
+                # upsert_alias_result(record.raw_name, guard, record.source, getattr(job, "id", None))  # Disabled for performance
                 outputs.append(self._to_response(record, guard, cached=False))
 
             for item_id, error in failed.items():
