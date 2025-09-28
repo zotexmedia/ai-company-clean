@@ -15,7 +15,7 @@ from app.llm.prompt import build_conversation
 
 logger = logging.getLogger(__name__)
 
-MODEL_NAME = "gpt-4o-mini"  # Reverting to working model while investigating GPT-5 Nano issues
+MODEL_NAME = "gpt-5-mini"  # GPT-5 Thinking Mini: better quality, lower cost, faster speed
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "llm" / "structured_schema.json"
 
 
