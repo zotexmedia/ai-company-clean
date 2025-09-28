@@ -8,18 +8,20 @@ from typing import Iterable, List, Tuple
 
 SYSTEM_PROMPT = dedent(
     """
-    You normalize English company names into a single canonical brand name.
+    You normalize English company names into a single canonical brand name for email marketing and professional communication.
 
     Output strict JSON only, matching the provided schema. Do not include prose, markdown, or explanations outside the JSON.
 
     Goals
-    1. Preserve the true brand.
+    1. Preserve the true brand for professional email communication.
     2. Ignore legal suffixes and administrative location tails when they are not part of the brand.
-    3. Apply the definite article "the" correctly so the canonical reads naturally in English. Follow the "Definite article policy" exactly.
+    3. Apply the definite article "the" correctly so the canonical reads naturally in email greetings and business correspondence.
+    4. Use proper business capitalization that looks professional in emails.
 
     General rules
     - Language is always English.
-    - Canonical should be Title Case unless the brand uses special capitalization (e.g., "AT&T", "3M", "iFixit").
+    - Canonical should use proper Title Case for professional appearance in emails. Avoid ALL CAPS unless it's an established acronym/brand (e.g., "IBM", "AT&T").
+    - Convert ALL CAPS company names to proper Title Case (e.g., "GENESIS INTEGRATIVE MEDICINE" → "Genesis Integrative Medicine").
     - Remove surrounding quotes, emojis, and trailing punctuation.
     - Keep meaningful industry words that distinguish sibling brands ("Acme Cleaning" vs "Acme Pest Control").
     - Keep numbers and alphanumerics that are part of the brand ("Studio 54", "3M").
@@ -49,10 +51,10 @@ SYSTEM_PROMPT = dedent(
     - canonical_with_article: a grammatically natural form with "the" prefixed when appropriate (lowercase "the" unless the official brand capitalizes it). If "the" is not natural or not used for that brand, canonical_with_article must equal canonical.
 
     Article categories:
-    - required – Only for specific institutional patterns that genuinely require "the": "University of [Place]", "City of [Name]", "Office of [Title]", "Department of [Function]". Most universities (Harvard University, Stanford University, Augustana University) do NOT use "the".
+    - required – Professional service patterns that sound natural in email context: "The Law Office of [Name]", "The Office of [Title]", "The [Place] Group", "The University of [Place]", "The City of [Name]". Use when it sounds natural in "Dear [Company Name]" emails.
     - official – the brand itself includes "The" as part of the official name ("The Home Depot", "The North Face", "The Ohio State University"). Keep the capitalized "The".
     - optional – add lowercase "the" only in canonical_with_article to improve readability (e.g., "Dallas Group" -> canonical_with_article "the Dallas Group"), but do not include it in canonical.
-    - none – most commercial brands and most universities where "the" is neither official nor helpful.
+    - none – most commercial brands and standalone universities where "the" is neither official nor helpful for email communication.
 
     Ambiguity & safety checks
     - Do not collapse distinct brands; keep disambiguating tokens when needed.
@@ -211,6 +213,39 @@ FEW_SHOTS: List[Tuple[str, dict]] = [
             "is_new": False,
             "confidence": 0.96,
             "reason": "Most universities do not use 'the' in normal usage"
+        },
+    ),
+    (
+        "GENESIS INTEGRATIVE MEDICINE LLC",
+        {
+            "canonical": "Genesis Integrative Medicine",
+            "canonical_with_article": "Genesis Integrative Medicine",
+            "article_policy": "none",
+            "is_new": False,
+            "confidence": 0.95,
+            "reason": "Converted ALL CAPS to Title Case; removed LLC suffix"
+        },
+    ),
+    (
+        "The Law Office of Damon M. Fisch, PC",
+        {
+            "canonical": "The Law Office of Damon M. Fisch",
+            "canonical_with_article": "The Law Office of Damon M. Fisch",
+            "article_policy": "required",
+            "is_new": False,
+            "confidence": 0.96,
+            "reason": "Professional service pattern requires 'The' for natural email communication"
+        },
+    ),
+    (
+        "ROCKERT DENTAL STUDIO, INC.",
+        {
+            "canonical": "Rockert Dental Studio",
+            "canonical_with_article": "Rockert Dental Studio",
+            "article_policy": "none",
+            "is_new": False,
+            "confidence": 0.95,
+            "reason": "Converted ALL CAPS to Title Case; removed Inc suffix"
         },
     ),
 ]
