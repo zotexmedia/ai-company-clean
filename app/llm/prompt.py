@@ -8,45 +8,208 @@ from typing import Iterable, List, Tuple
 
 SYSTEM_PROMPT = dedent(
     """
-    You normalize English company names.
-    Ignore legal suffixes and locations. Keep meaningful brand words and industry terms if they distinguish brands.
-    Only return valid JSON that matches the provided JSON Schema.
+    You normalize English company names into a single canonical brand name.
+
+    Output strict JSON only, matching the provided schema. Do not include prose, markdown, or explanations outside the JSON.
+
+    Goals
+    1. Preserve the true brand.
+    2. Ignore legal suffixes and administrative location tails when they are not part of the brand.
+    3. Apply the definite article "the" correctly so the canonical reads naturally in English. Follow the "Definite article policy" exactly.
+
+    General rules
+    - Language is always English.
+    - Canonical should be Title Case unless the brand uses special capitalization (e.g., "AT&T", "3M", "iFixit").
+    - Remove surrounding quotes, emojis, and trailing punctuation.
+    - Keep meaningful industry words that distinguish sibling brands ("Acme Cleaning" vs "Acme Pest Control").
+    - Keep numbers and alphanumerics that are part of the brand ("Studio 54", "3M").
+    - Replace "&" with "and" unless the ampersand is integral to the brand (e.g., "AT&T" stays "AT&T").
+    - Remove store/unit markers: "#12", "Suite 300", "Unit B", "Store 145".
+    - Drop administrative markers: "HQ", "Headquarters", "Main Office", "Branch", "Warehouse", "Plant 2", unless integral to the brand (e.g., "HQ Trivia").
+    - Prefer the d/b/a brand when present (use the portion after "dba" / "DBA").
+
+    Legal suffixes to ignore when not part of the brand:
+    inc, incorporated, co, company, corp, corporation, ltd, limited, llc, l.l.c., llp, l.l.p., plc, gmbh, srl, s.a., bv, nv, ab, oy, as, kk, pty ltd, sdn bhd, pbc, pc, lp, llc-pc
+
+    Common non-brand tails to remove:
+    accounts payable/receivable, billing, collections, fulfillment, corporate office, division, department, warehouse, plant, location, site, campus
+
+    Location handling
+    - Keep location tokens when integral to the brand or conventional usage:
+      - Location token at the start followed by a generic brand noun: "The Dallas Group", "Dallas Dental Clinic", "Boston Market".
+      - Multi-word brands where location is fused into the name: "New York Life", "Arizona Beverages".
+      - No delimiter suggests an address tail (no comma, dash, or parentheses after the brand).
+    - Remove location tails that are administrative or appended: "Acme Cleaning, Dallas", "Acme Cleaning - Dallas", "Acme Cleaning (Dallas)".
+    - Franchise/store descriptors: keep only the national brand if followed by store numbers or cities, e.g., "Walmart Store 145 - Plano" -> "Walmart".
+    - If the only distinctive tokens are location plus an industry noun, keep both (e.g., "Dallas Dental Clinic").
+
+    Definite article policy
+    Return two strings:
+    - canonical: the authoritative display name. Include "the" only when it is required for natural brand reading or is an official part of the brand.
+    - canonical_with_article: a grammatically natural form with "the" prefixed when appropriate (lowercase "the" unless the official brand capitalizes it). If "the" is not natural or not used for that brand, canonical_with_article must equal canonical.
+
+    Article categories:
+    - required – institutional names that conventionally take "the": University/College/School/Institute/Department/Office of..., City/County/State of... Use lowercase "the" unless official stylization capitalizes it.
+    - official – the brand itself includes "The" as part of the official name ("The Home Depot", "The North Face"). Keep the capitalized "The".
+    - optional – add lowercase "the" only in canonical_with_article to improve readability (e.g., "Dallas Group" -> canonical_with_article "the Dallas Group"), but do not include it in canonical.
+    - none – most commercial brands where "the" is neither official nor helpful.
+
+    Ambiguity & safety checks
+    - Do not collapse distinct brands; keep disambiguating tokens when needed.
+    - Do not output empty or single-letter canonicals.
+    - If the result would be only a location with no brand word, keep the best brand reading and lower confidence accordingly.
+
+    Confidence guidelines
+    - 0.95-1.00: exact brand form or minor legal/location cleanup.
+    - 0.85-0.94: clear brand with small uncertainty.
+    - 0.70-0.84: ambiguous; reasonable choice made.
+    - <0.70: uncertain; consider human review.
+
+    Return strict JSON only.
     """
 ).strip()
 
 USER_TEMPLATE = dedent(
     """
     RAW: "{raw_name}"
-    CONTEXT:
-    - Language is always English.
-    - Ignore legal suffixes: inc, incorporated, co, corp, ltd, llc, llp, plc, gmbh, srl, s.a., bv, nv, ab, oy, as, kk, pty ltd, sdn bhd.
-    - Ignore location qualifiers: city, state, country, "HQ", directional suffixes, zip codes.
-    - Keep industry words if they differentiate sibling brands, for example "Acme Cleaning" vs "Acme Pest".
-    Return only the canonical form used most commonly by customers.
+
+    Guidelines to apply:
+    • Follow the rules and the definite article policy exactly.
+    • Return only valid JSON that matches the schema.
     """
 ).strip()
 
-# 14 diverse examples mirroring high-signal edge cases. Kept short so they travel with the app.
 FEW_SHOTS: List[Tuple[str, dict]] = [
-    ("ACME FACILITY SERVICES, INC.", {"canonical": "Acme Facility Services", "is_new": False, "confidence": 0.95, "reason": "Identical to existing brand"}),
-    ("Acme Cleaning LLC - Dallas", {"canonical": "Acme Cleaning", "is_new": False, "confidence": 0.92, "reason": "Same brand location branch"}),
-    ("The Sterling Group Holdings, LLC", {"canonical": "Sterling Group", "is_new": False, "confidence": 0.88, "reason": "Drop legal tail"}),
-    ("BrightWave Solar Ltd (Austin HQ)", {"canonical": "BrightWave Solar", "is_new": False, "confidence": 0.9, "reason": "Remove HQ location"}),
-    ("Northstar Pest Control of Tampa", {"canonical": "Northstar Pest Control", "is_new": False, "confidence": 0.87, "reason": "Ignore city"}),
-    ("Blue Horizon Marine Services Pty Ltd", {"canonical": "Blue Horizon Marine Services", "is_new": False, "confidence": 0.9, "reason": "Drop Pty Ltd suffix"}),
-    ("Acme Facility Care (West Region)", {"canonical": "Acme Facility Care", "is_new": False, "confidence": 0.84, "reason": "Regional label ignored"}),
-    ("NovaTech Robotics GmbH", {"canonical": "NovaTech Robotics", "is_new": False, "confidence": 0.93, "reason": "GmbH legal form ignored"}),
-    ("Atlas Industrial Cleaning & Co.", {"canonical": "Atlas Industrial Cleaning", "is_new": False, "confidence": 0.89, "reason": "Trailing Co removed"}),
-    ("GreenLeaf Landscaping - Phoenix East", {"canonical": "GreenLeaf Landscaping", "is_new": False, "confidence": 0.86, "reason": "Discard directional"}),
-    ("Precision Analytics (New)", {"canonical": "Precision Analytics", "is_new": False, "confidence": 0.8, "reason": "Marketing tag removed"}),
-    ("Summit Bio Labs, Inc.", {"canonical": "Summit Bio Labs", "is_new": False, "confidence": 0.9, "reason": "Strip Inc"}),
-    ("Coastal Pest & Lawn LLC", {"canonical": "Coastal Pest & Lawn", "is_new": False, "confidence": 0.88, "reason": "Keep industry differentiator"}),
-    ("Valor Security Solutions (US)", {"canonical": "Valor Security Solutions", "is_new": False, "confidence": 0.85, "reason": "Country qualifier ignored"}),
+    (
+        "University of Texas at Dallas",
+        {
+            "canonical": "the University of Texas at Dallas",
+            "canonical_with_article": "the University of Texas at Dallas",
+            "article_policy": "required",
+            "is_new": False,
+            "confidence": 0.98,
+            "reason": "Institutional name requires lowercase 'the'"
+        },
+    ),
+    (
+        "Bank of America, Dallas Branch",
+        {
+            "canonical": "Bank of America",
+            "canonical_with_article": "Bank of America",
+            "article_policy": "none",
+            "is_new": False,
+            "confidence": 0.95,
+            "reason": "Removed branch descriptor; brand does not use 'the'"
+        },
+    ),
+    (
+        "The Home Depot Store 145 - Plano",
+        {
+            "canonical": "The Home Depot",
+            "canonical_with_article": "The Home Depot",
+            "article_policy": "official",
+            "is_new": False,
+            "confidence": 0.97,
+            "reason": "Official brand includes capitalized 'The'"
+        },
+    ),
+    (
+        "The Dallas Group",
+        {
+            "canonical": "Dallas Group",
+            "canonical_with_article": "the Dallas Group",
+            "article_policy": "optional",
+            "is_new": False,
+            "confidence": 0.93,
+            "reason": "Article optional for readability"
+        },
+    ),
+    (
+        "Dallas Dental Clinic",
+        {
+            "canonical": "Dallas Dental Clinic",
+            "canonical_with_article": "the Dallas Dental Clinic",
+            "article_policy": "optional",
+            "is_new": False,
+            "confidence": 0.95,
+            "reason": "Location + industry noun reads naturally with article"
+        },
+    ),
+    (
+        "Boston Scientific Inc.",
+        {
+            "canonical": "Boston Scientific",
+            "canonical_with_article": "Boston Scientific",
+            "article_policy": "none",
+            "is_new": False,
+            "confidence": 0.98,
+            "reason": "Known brand; no article"
+        },
+    ),
+    (
+        "New York Life Insurance Company",
+        {
+            "canonical": "New York Life",
+            "canonical_with_article": "New York Life",
+            "article_policy": "none",
+            "is_new": False,
+            "confidence": 0.98,
+            "reason": "Normalized to common brand form"
+        },
+    ),
+    (
+        "Subway #123 Dallas",
+        {
+            "canonical": "Subway",
+            "canonical_with_article": "Subway",
+            "article_policy": "none",
+            "is_new": False,
+            "confidence": 0.96,
+            "reason": "Removed store/city tail"
+        },
+    ),
+    (
+        "Acme LLC dba Metro Facility Care",
+        {
+            "canonical": "Metro Facility Care",
+            "canonical_with_article": "Metro Facility Care",
+            "article_policy": "none",
+            "is_new": False,
+            "confidence": 0.96,
+            "reason": "Preferred d/b/a brand"
+        },
+    ),
+    (
+        "AT&T Corp.",
+        {
+            "canonical": "AT&T",
+            "canonical_with_article": "AT&T",
+            "article_policy": "none",
+            "is_new": False,
+            "confidence": 0.98,
+            "reason": "Brand keeps ampersand; legal suffix removed"
+        },
+    ),
+    (
+        "Acme Cleaning (Dallas, TX 75201)",
+        {
+            "canonical": "Acme Cleaning",
+            "canonical_with_article": "Acme Cleaning",
+            "article_policy": "none",
+            "is_new": False,
+            "confidence": 0.92,
+            "reason": "Removed address tail"
+        },
+    ),
 ]
 
 
+# Convert Python booleans in FEW_SHOTS to JSON-friendly strings when serializing
+for idx, (raw, payload) in enumerate(FEW_SHOTS):
+    FEW_SHOTS[idx] = (raw, json.loads(json.dumps(payload)))
+
+
 def build_user_message(raw_name: str, retry_suffix: str | None = None) -> str:
-    """Render the user template for a raw company name."""
     message = USER_TEMPLATE.format(raw_name=raw_name)
     if retry_suffix:
         message = f"{message}\n\n{retry_suffix.strip()}"
@@ -54,35 +217,28 @@ def build_user_message(raw_name: str, retry_suffix: str | None = None) -> str:
 
 
 def few_shot_messages() -> Iterable[dict]:
-    """Yield interleaved user/assistant messages for the example pairs."""
     for raw, payload in FEW_SHOTS:
         yield {
             "role": "user",
-            "content": [
-                {"type": "text", "text": build_user_message(raw)}
-            ],
+            "content": [{"type": "text", "text": build_user_message(raw)}],
         }
         yield {
             "role": "assistant",
             "content": [
                 {
                     "type": "output_text",
-                    "text": json.dumps(payload, separators=(",", ":"))
+                    "text": json.dumps(payload, separators=(",", ":")),
                 }
             ],
         }
 
 
 def build_conversation(raw_name: str, retry_suffix: str | None = None) -> List[dict]:
-    """Construct the message list for a single normalization call."""
-    messages: List[dict] = [
+    return [
         {"role": "system", "content": [{"type": "text", "text": SYSTEM_PROMPT}]},
         *few_shot_messages(),
         {
             "role": "user",
-            "content": [
-                {"type": "text", "text": build_user_message(raw_name, retry_suffix=retry_suffix)}
-            ],
+            "content": [{"type": "text", "text": build_user_message(raw_name, retry_suffix=retry_suffix)}],
         },
     ]
-    return messages

@@ -147,13 +147,24 @@ def upsert_alias_result(
         if alias:
             alias.last_seen = now
             alias.confidence_last = result.confidence
+            alias.details = {
+                "flags": list(result.flags),
+                "reason": result.raw_reason,
+                "canonical_with_article": result.canonical_with_article,
+                "article_policy": result.article_policy,
+            }
         else:
             alias = Alias(
                 alias_name=raw_name,
                 canonical_id=canonical.id,
                 source=source,
                 confidence_last=result.confidence,
-                details={"flags": list(result.flags), "reason": result.raw_reason},
+                details={
+                    "flags": list(result.flags),
+                    "reason": result.raw_reason,
+                    "canonical_with_article": result.canonical_with_article,
+                    "article_policy": result.article_policy,
+                },
             )
             session.add(alias)
 

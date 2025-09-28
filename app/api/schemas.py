@@ -19,6 +19,8 @@ class NormalizeRecord(BaseModel):
 
 class CanonicalResult(BaseModel):
     canonical: str
+    canonical_with_article: str
+    article_policy: Literal["required", "official", "optional", "none"]
     is_new: bool
     confidence: float = Field(..., ge=0, le=1)
     reason: Optional[str] = None

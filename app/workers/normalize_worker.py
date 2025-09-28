@@ -182,6 +182,8 @@ class NormalizationService:
     def _to_response(self, record: NormalizeRecord, guard: GuardrailResult, cached: bool) -> NormalizeResponseItem:
         result = CanonicalResult(
             canonical=guard.canonical,
+            canonical_with_article=guard.canonical_with_article,
+            article_policy=guard.article_policy,
             is_new=guard.is_new,
             confidence=guard.confidence,
             reason=guard.reason,

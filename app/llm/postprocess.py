@@ -86,6 +86,8 @@ def token_overlap(a: str, b: str) -> float:
 @dataclass
 class GuardrailResult:
     canonical: str
+    canonical_with_article: str
+    article_policy: str
     is_new: bool
     confidence: float
     reason: Optional[str]
@@ -95,18 +97,31 @@ class GuardrailResult:
     flags: Tuple[str, ...]
 
 
+VALID_ARTICLE_POLICIES = {"required", "official", "optional", "none"}
+
+
 def apply_guardrails(raw_name: str, payload: Dict[str, object]) -> GuardrailResult:
     """Enforce post-processing rules and generate join/display helpers."""
     canonical = str(payload.get("canonical", "")).strip()
+    canonical_with_article = str(payload.get("canonical_with_article", "")).strip()
+    article_policy = str(payload.get("article_policy", "none")).strip().lower()
     is_new = bool(payload.get("is_new", False))
     confidence = float(payload.get("confidence", 0.0))
     reason = payload.get("reason")
     flags: List[str] = []
 
+    if article_policy not in VALID_ARTICLE_POLICIES:
+        article_policy = "none"
+        flags.append("article_policy_normalized")
+
     if not canonical:
         canonical = clean_company_name(raw_name)
         confidence = 0.0
         flags.append("empty_canonical")
+
+    if not canonical_with_article:
+        canonical_with_article = canonical
+        flags.append("missing_canonical_with_article")
 
     overlap = token_overlap(raw_name, canonical)
     if overlap < 0.3:
@@ -122,6 +137,8 @@ def apply_guardrails(raw_name: str, payload: Dict[str, object]) -> GuardrailResu
 
     return GuardrailResult(
         canonical=canonical,
+        canonical_with_article=canonical_with_article,
+        article_policy=article_policy,
         is_new=is_new,
         confidence=confidence,
         reason=reason if isinstance(reason, str) and reason.strip() else None,

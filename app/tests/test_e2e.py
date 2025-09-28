@@ -46,7 +46,11 @@ def test_retry_invalid_output(memory_cache, noop_db, monkeypatch):
                 {
                     "id": items[0]["id"],
                     "raw_name": items[0]["raw_name"],
-                    "payload": {"canonical": "", "is_new": False, "confidence": 0.9},
+                    "payload": {
+                        "canonical": "",
+                        "is_new": False,
+                        "confidence": 0.9,
+                    },
                 }
             ]
         return [
@@ -55,8 +59,11 @@ def test_retry_invalid_output(memory_cache, noop_db, monkeypatch):
                 "raw_name": items[0]["raw_name"],
                 "payload": {
                     "canonical": "Acme Facility Services",
+                    "canonical_with_article": "Acme Facility Services",
+                    "article_policy": "none",
                     "is_new": False,
                     "confidence": 0.92,
+                    "reason": "retry success",
                 },
             }
         ]
@@ -67,6 +74,11 @@ def test_retry_invalid_output(memory_cache, noop_db, monkeypatch):
     assert not errors
     assert call_counter["count"] == 2
     assert results[0].result.canonical == "Acme Facility Services"
+    assert (
+        results[0].result.canonical_with_article
+        == "Acme Facility Services"
+    )
+    assert results[0].result.article_policy == "none"
     assert results[0].result.confidence == pytest.approx(0.92)
     assert results[0].result.flags == []
 
@@ -82,6 +94,8 @@ def test_guardrail_low_overlap(memory_cache, noop_db, monkeypatch):
                 "raw_name": items[0]["raw_name"],
                 "payload": {
                     "canonical": "Completely Different Brand",
+                    "canonical_with_article": "Completely Different Brand",
+                    "article_policy": "none",
                     "is_new": True,
                     "confidence": 0.95,
                 },
@@ -102,6 +116,8 @@ def test_cache_hit_bypasses_llm(memory_cache, noop_db, monkeypatch):
 
     cached_payload = {
         "canonical": "Cached Company",
+        "canonical_with_article": "Cached Company",
+        "article_policy": "none",
         "is_new": False,
         "confidence": 0.88,
         "reason": "memoized",
@@ -115,3 +131,5 @@ def test_cache_hit_bypasses_llm(memory_cache, noop_db, monkeypatch):
     assert not errors
     assert results[0].cached is True
     assert results[0].result.canonical == "Cached Company"
+    assert results[0].result.canonical_with_article == "Cached Company"
+    assert results[0].result.article_policy == "none"
