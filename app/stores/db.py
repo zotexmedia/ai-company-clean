@@ -84,7 +84,13 @@ class JobRun(Base):
     result_path = Column(Text, nullable=True)
 
 
-DATABASE_URL = os.getenv("POSTGRES_DSN", "postgresql+psycopg://postgres:postgres@localhost:5432/company_cleaner")
+DATABASE_URL = os.getenv("POSTGRES_DSN") or os.getenv("DATABASE_URL", "postgresql+psycopg://postgres:postgres@localhost:5432/company_cleaner")
+
+# Add logging to help debug connection issues
+import logging
+logger = logging.getLogger(__name__)
+logger.info("Database URL configured: %s", DATABASE_URL.replace(DATABASE_URL.split("@")[0].split("//")[1], "***") if "@" in DATABASE_URL else "local")
+
 engine = create_engine(DATABASE_URL, future=True, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, future=True)
 
@@ -173,9 +179,8 @@ def upsert_alias_result(
                 increment_job_progress(session, job_id, success_delta=1)
     except Exception as e:
         # Database unavailable - log and continue without persistence
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.warning("Database unavailable, skipping persistence: %s", str(e))
+        logger.warning("Database unavailable, skipping persistence for '%s': %s", raw_name, str(e))
+        logger.debug("Full error details: %s", e, exc_info=True)
 
 
 def record_job(job: JobRun) -> uuid.UUID:
