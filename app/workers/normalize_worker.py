@@ -20,7 +20,7 @@ from app.workers.llm_client import LLMCallError, normalize_batch_gpt4o_mini, loa
 
 logger = logging.getLogger(__name__)
 
-BATCH_SIZE = int(os.getenv("BATCH_SIZE", 200))  # Optimized for Tier 2 performance
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", 500))  # Optimized for GPT-5 Mini rate limits
 INVALID_SUFFIX = "Invalid JSON, return valid JSON only."
 
 

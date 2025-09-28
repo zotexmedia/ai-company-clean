@@ -135,8 +135,8 @@ def normalize_batch_gpt4o_mini(items: Sequence[Dict[str, Any]]) -> List[Dict[str
             results.append(_process_single_item(item, schema))
         return results
     
-    # For larger batches, use concurrent processing optimized for Tier 2
-    max_workers = min(25, len(items))  # Tier 2 optimized: 5,000 RPM limit allows higher concurrency
+    # For larger batches, use concurrent processing optimized for GPT-5 Mini rate limits
+    max_workers = min(80, len(items))  # GPT-5 Mini: 2M TPM allows massive concurrency
     results = [None] * len(items)
     
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
