@@ -49,10 +49,10 @@ SYSTEM_PROMPT = dedent(
     - canonical_with_article: a grammatically natural form with "the" prefixed when appropriate (lowercase "the" unless the official brand capitalizes it). If "the" is not natural or not used for that brand, canonical_with_article must equal canonical.
 
     Article categories:
-    - required – institutional names that conventionally take "the": University/College/School/Institute/Department/Office of..., City/County/State of... Use lowercase "the" unless official stylization capitalizes it.
-    - official – the brand itself includes "The" as part of the official name ("The Home Depot", "The North Face"). Keep the capitalized "The".
+    - required – Only for specific institutional patterns that genuinely require "the": "University of [Place]", "City of [Name]", "Office of [Title]", "Department of [Function]". Most universities (Harvard University, Stanford University, Augustana University) do NOT use "the".
+    - official – the brand itself includes "The" as part of the official name ("The Home Depot", "The North Face", "The Ohio State University"). Keep the capitalized "The".
     - optional – add lowercase "the" only in canonical_with_article to improve readability (e.g., "Dallas Group" -> canonical_with_article "the Dallas Group"), but do not include it in canonical.
-    - none – most commercial brands where "the" is neither official nor helpful.
+    - none – most commercial brands and most universities where "the" is neither official nor helpful.
 
     Ambiguity & safety checks
     - Do not collapse distinct brands; keep disambiguating tokens when needed.
@@ -84,12 +84,12 @@ FEW_SHOTS: List[Tuple[str, dict]] = [
     (
         "University of Texas at Dallas",
         {
-            "canonical": "the University of Texas at Dallas",
+            "canonical": "University of Texas at Dallas",
             "canonical_with_article": "the University of Texas at Dallas",
             "article_policy": "required",
             "is_new": False,
             "confidence": 0.98,
-            "reason": "Institutional name requires lowercase 'the'"
+            "reason": "University of [Place] pattern requires article only in grammatical contexts"
         },
     ),
     (
@@ -200,6 +200,17 @@ FEW_SHOTS: List[Tuple[str, dict]] = [
             "is_new": False,
             "confidence": 0.92,
             "reason": "Removed address tail"
+        },
+    ),
+    (
+        "Augustana University",
+        {
+            "canonical": "Augustana University",
+            "canonical_with_article": "Augustana University",
+            "article_policy": "none",
+            "is_new": False,
+            "confidence": 0.96,
+            "reason": "Most universities do not use 'the' in normal usage"
         },
     ),
 ]

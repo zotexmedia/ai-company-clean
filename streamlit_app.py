@@ -6,6 +6,8 @@ import requests
 import streamlit as st
 from typing import List, Dict, Any
 import time
+import concurrent.futures
+import threading
 
 # Configure page
 st.set_page_config(
@@ -17,8 +19,21 @@ st.set_page_config(
 # API Configuration
 API_URL = "https://ai-company-clean.onrender.com/normalize"
 
+def process_batch(batch, batch_num, total_batches):
+    """Process a single batch of records."""
+    try:
+        response = requests.post(
+            API_URL,
+            json={"records": batch},
+            timeout=60
+        )
+        response.raise_for_status()
+        return batch_num, response.json()["results"]
+    except Exception as e:
+        return batch_num, f"Error: {str(e)}"
+
 def clean_company_names(df: pd.DataFrame, company_column: str) -> pd.DataFrame:
-    """Clean company names using the API."""
+    """Clean company names using the API with concurrent processing."""
     # Prepare records for API
     records = []
     for idx, row in df.iterrows():
@@ -29,39 +44,52 @@ def clean_company_names(df: pd.DataFrame, company_column: str) -> pd.DataFrame:
             "country_hint": "US"
         })
     
-    # Create progress bar
+    # Create progress tracking
     progress_bar = st.progress(0)
     status_text = st.empty()
     
-    # Process in batches
-    batch_size = 50
-    all_results = []
+    # Process in smaller concurrent batches
+    batch_size = 20  # Smaller batches for better concurrency
+    max_workers = 5   # Concurrent requests
     
+    # Create batches
+    batches = []
     for i in range(0, len(records), batch_size):
         batch = records[i:i + batch_size]
-        status_text.text(f"Processing {i + 1}-{min(i + batch_size, len(records))} of {len(records)} companies...")
+        batches.append(batch)
+    
+    all_results = [None] * len(batches)
+    completed = 0
+    
+    # Process batches concurrently
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all batches
+        future_to_batch = {
+            executor.submit(process_batch, batch, i, len(batches)): i 
+            for i, batch in enumerate(batches)
+        }
         
-        try:
-            response = requests.post(
-                API_URL,
-                json={"records": batch},
-                timeout=120
-            )
-            response.raise_for_status()
+        # Process completed futures
+        for future in concurrent.futures.as_completed(future_to_batch):
+            batch_num = future_to_batch[future]
+            batch_num, result = future.result()
             
-            batch_results = response.json()["results"]
-            all_results.extend(batch_results)
+            if isinstance(result, str):  # Error case
+                st.error(f"Error processing batch {batch_num + 1}: {result}")
+                return None
+                
+            all_results[batch_num] = result
+            completed += 1
             
             # Update progress
-            progress = min((i + batch_size) / len(records), 1.0)
+            progress = completed / len(batches)
             progress_bar.progress(progress)
-            
-            # Small delay to be nice to the API
-            time.sleep(0.1)
-            
-        except Exception as e:
-            st.error(f"Error processing batch: {str(e)}")
-            return None
+            status_text.text(f"Completed {completed} of {len(batches)} batches ({completed * batch_size} companies)...")
+    
+    # Flatten results
+    flattened_results = []
+    for batch_results in all_results:
+        flattened_results.extend(batch_results)
     
     # Clear progress indicators
     progress_bar.empty()
@@ -69,7 +97,7 @@ def clean_company_names(df: pd.DataFrame, company_column: str) -> pd.DataFrame:
     
     # Create results DataFrame
     cleaned_data = []
-    for result in all_results:
+    for result in flattened_results:
         row_idx = int(result["id"].split("-")[1])
         original_row = df.iloc[row_idx].copy()
         
