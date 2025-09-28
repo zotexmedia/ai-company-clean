@@ -16,12 +16,22 @@ from app.api.schemas import (
     NormalizeRequest,
     NormalizeResponse,
 )
-from app.stores.db import JobRun, JobStatus as DbJobStatus, get_job
+from app.stores.db import JobRun, JobStatus as DbJobStatus, get_job, init_models
 from app.workers.normalize_worker import enqueue_job, service
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Company Name Cleaner", version="1.0.0")
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database tables on startup."""
+    try:
+        init_models()
+        logger.info("Database tables initialized successfully")
+    except Exception as e:
+        logger.warning("Database initialization failed (continuing without persistence): %s", str(e))
 
 
 @app.get("/")
