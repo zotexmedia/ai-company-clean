@@ -19,7 +19,7 @@ SYSTEM_PROMPT = dedent(
     6) Designators like Group, Partners, Firm, Associates, Company/Co.:
        • If they are integral to how the brand is known and no other head noun remains (e.g., Wellington Group, Martin Group), keep them.
        • If they appear as trailing fluff after a stronger head noun (e.g., "Hess Law Firm"), drop the designator and keep the head noun ("Hess Law").
-    7) Article rule (very restrictive): ONLY add "the" when the name is a simple generic corporate structure like "Wellington Group" or "Martin Company". Do NOT add "the" to names with personal names, hyphens, special characters, or complex brand names (e.g., "Element-R Partners", "Lee Mandel & Associates", "Sterling Partners" should all stay as-is).
+    7) Article rule: Do NOT add "the" to company names for email personalization. Most company names sound more natural without "the" when used in business contexts like "We work with companies similar to [company name]".
     8) Cleanup: preserve obvious stylization (CamelCase, numerals, &), normalize commas/spaces, and avoid adding or inventing words.
 
     Return: {"canonical": "Brand Name"}
