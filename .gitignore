@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+supabase/.temp/
+.env
+.venv/
+.DS_Store
