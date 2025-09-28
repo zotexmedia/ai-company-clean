@@ -20,11 +20,15 @@ SYSTEM_PROMPT = dedent(
 
     General rules
     - Language is always English.
-    - **CRITICAL CAPITALIZATION RULE**: ALWAYS convert ALL CAPS company names to proper Title Case for professional appearance. Only exceptions are established acronyms like "IBM", "AT&T", "NASA".
-    - Examples of required conversions:
-      • "ROCKERT DENTAL STUDIO" → "Rockert Dental Studio"  
-      • "GENESIS INTEGRATIVE MEDICINE" → "Genesis Integrative Medicine"
-      • "BRIX GROUP" → "Brix Group"
+    
+    **MANDATORY CAPITALIZATION REQUIREMENT - THIS IS THE MOST IMPORTANT RULE:**
+    - ALL CAPS company names MUST be converted to proper Title Case. NO EXCEPTIONS except established acronyms.
+    - If you see ANY word in ALL CAPS that is not an established acronym like "IBM", "AT&T", "NASA", you MUST convert it to Title Case.
+    - Examples that MUST be followed:
+      • "ROCKERT DENTAL STUDIO" → "Rockert Dental" (Title Case + remove "Studio")
+      • "GENESIS INTEGRATIVE MEDICINE" → "Genesis Integrative Medicine" (Title Case)
+      • "BRIX GROUP" → "Brix Group" (Title Case)
+      • "DECO ACCOUNTING SERVICES" → "DECO Accounting" (DECO might be acronym, but convert if unsure)
     - Remove surrounding quotes, emojis, and trailing punctuation.
     - **Industry word rules**: Keep the core industry descriptor, remove generic qualifiers:
       • "Law Firm" → "Law" (keep industry, remove generic "Firm")
@@ -80,6 +84,11 @@ SYSTEM_PROMPT = dedent(
     - 0.70-0.84: ambiguous; reasonable choice made.
     - <0.70: uncertain; consider human review.
 
+    FINAL VALIDATION: Before returning JSON, verify:
+    1. NO ALL CAPS words remain in "canonical" unless they are established acronyms
+    2. Business terms follow the industry word rules (Law not Firm, Dental not Studio)
+    3. Example check: "ROCKERT DENTAL STUDIO, INC." must become "Rockert Dental"
+
     Return strict JSON only.
     """
 ).strip()
@@ -88,12 +97,14 @@ USER_TEMPLATE = dedent(
     """
     RAW: "{raw_name}"
 
-    Guidelines to apply:
-    • Follow the rules and the definite article policy exactly.
-    • **MANDATORY**: Convert ALL CAPS words to Title Case (except established acronyms like IBM, AT&T)
-    • Return only valid JSON that matches the schema.
-    • Always include the "reason" field with a brief explanation of what was kept or removed.
-    • Your "canonical" field must NEVER contain ALL CAPS words unless they are established acronyms.
+    CRITICAL REQUIREMENTS:
+    1. **CAPITALIZATION**: If the input contains ANY ALL CAPS words, you MUST convert them to Title Case unless they are established acronyms (IBM, AT&T, NASA, etc.)
+    2. **BUSINESS TERMS**: Apply industry word rules - keep "Law", "Dental", "Medical" but remove "Firm", "Studio", "Services"
+    3. **VALIDATION**: Your output "canonical" field must NEVER contain ALL CAPS words except known acronyms
+    4. **JSON ONLY**: Return only valid JSON that matches the schema
+    5. **EXPLANATION**: Include "reason" field explaining capitalization and term changes made
+
+    If the input is "ROCKERT DENTAL STUDIO, INC." the output must be "Rockert Dental" (converted caps + removed Studio/Inc).
     """
 ).strip()
 
