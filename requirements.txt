@@ -1,6 +1,6 @@
 fastapi>=0.112,<0.113
 uvicorn[standard]>=0.30,<0.31
-openai>=1.47,<2
+openai>=1.109,<2
 redis>=5.0,<6
 rq>=1.16,<2
 sqlalchemy>=2.0,<2.1
