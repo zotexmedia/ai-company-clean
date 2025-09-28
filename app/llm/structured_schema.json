@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "properties": {
+    "canonical": {"type": "string", "minLength": 1},
+    "is_new": {"type": "boolean"},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "reason": {"type": "string"}
+  },
+  "required": ["canonical", "is_new", "confidence"],
+  "additionalProperties": false
+}
