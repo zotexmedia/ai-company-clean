@@ -1,20 +1,10 @@
 {
   "type": "object",
   "properties": {
-    "canonical": {"type": "string"},
-    "canonical_with_article": {"type": "string"},
-    "article_policy": {"type": "string", "enum": ["required", "official", "optional", "none"]},
-    "is_new": {"type": "boolean"},
-    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
-    "reason": {"type": "string"}
+    "canonical": {"type": "string"}
   },
   "required": [
-    "canonical",
-    "canonical_with_article",
-    "article_policy",
-    "is_new",
-    "confidence",
-    "reason"
+    "canonical"
   ],
   "additionalProperties": false
 }

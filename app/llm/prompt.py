@@ -21,7 +21,7 @@ SYSTEM_PROMPT = dedent(
     6) Article rule (sentence readability): if the final word is Group, Partners, Firm, Associates, or Company/Co. and it is kept per rule 5, prepend "the" unless the name already begins with "The".
     7) Cleanup: preserve obvious stylization (CamelCase, numerals, &), normalize commas/spaces, and avoid adding or inventing words.
 
-    Return: {"canonical": "Brand Name", "canonical_with_article": "Brand Name", "article_policy": "none|optional|official", "is_new": false}
+    Return: {"canonical": "Brand Name"}
     """
 ).strip()
 
