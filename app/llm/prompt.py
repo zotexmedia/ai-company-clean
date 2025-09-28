@@ -11,16 +11,17 @@ SYSTEM_PROMPT = dedent(
     Normalize company names to core business identifiers. Output JSON only.
 
     Rules (apply in order):
-    1) Remove any corporate/legal suffixes or professional entity designators (e.g., Inc, LLC, Ltd, LLP, PLLC, PC, Corp, PLC, GmbH, S.A., BV, NV, Oy, etc.), including punctuated or localized variants. Treat this list as non-exhaustive and remove equivalent forms by reasoning.
-    2) Remove location/qualifiers and parentheticals: phrases like "of <City/State>", "at <Place>", trailing state/country codes, "USA", and any text in parentheses.
-    3) Domains: if a TLD/extension (.com, .net, .org, .expert, etc.) is present, remove only the extension; do not split internal CamelCase or brand tokens.
-    4) Personal names (CRITICAL): if the name contains typical first name + last name pattern followed by designators like "& Associates", "Partners", "Law Firm", etc., extract ONLY the personal name. Examples: "Lee Mandel & Associates" → "Lee Mandel", "Robert Slayton & Associates" → "Robert Slayton", "John Smith Law Firm" → "John Smith". Do NOT add "the" to personal names.
-    5) Keep the core brand and keep exactly one meaningful industry head noun if present (e.g., Law, Dental, Packaging, Mortgage, Insurance, Accounting, Consulting, Advisors, Realty, Chiropractic, Exteriors, Painting, Automotive, Banking, Finance, Wealth Management, Asset Management, Investment Management, Report). Prefer keeping the head noun over removing it if uncertain.
-    6) Designators like Group, Partners, Firm, Associates, Company/Co.:
+    1) Smart capitalization: When a company name is entirely in ALL CAPS, convert it to natural business capitalization as if you were writing it in a professional email or business directory. Use your understanding of how real company names typically appear. Examples: "BEYOND WORDS SPEECH THERAPY" → "Beyond Words Speech Therapy", "IBM CORPORATION" → "IBM Corporation", "ABC MEDICAL GROUP" → "ABC Medical Group". Apply business-appropriate capitalization that would look natural to a human reader.
+    2) Remove any corporate/legal suffixes or professional entity designators (e.g., Inc, LLC, Ltd, LLP, PLLC, PC, Corp, PLC, GmbH, S.A., BV, NV, Oy, etc.), including punctuated or localized variants. Treat this list as non-exhaustive and remove equivalent forms by reasoning.
+    3) Remove location/qualifiers and parentheticals: phrases like "of <City/State>", "at <Place>", trailing state/country codes, "USA", and any text in parentheses.
+    4) Domains: if a TLD/extension (.com, .net, .org, .expert, etc.) is present, remove only the extension; do not split internal CamelCase or brand tokens.
+    5) Personal names (CRITICAL): if the name contains typical first name + last name pattern followed by designators like "& Associates", "Partners", "Law Firm", etc., extract ONLY the personal name. Examples: "Lee Mandel & Associates" → "Lee Mandel", "Robert Slayton & Associates" → "Robert Slayton", "John Smith Law Firm" → "John Smith". Do NOT add "the" to personal names.
+    6) Keep the core brand and keep exactly one meaningful industry head noun if present (e.g., Law, Dental, Packaging, Mortgage, Insurance, Accounting, Consulting, Advisors, Realty, Chiropractic, Exteriors, Painting, Automotive, Banking, Finance, Wealth Management, Asset Management, Investment Management, Report). Prefer keeping the head noun over removing it if uncertain.
+    7) Designators like Group, Partners, Firm, Associates, Company/Co.:
        • If they are integral to how the brand is known and no other head noun remains (e.g., Wellington Group, Martin Group), keep them.
        • If they appear as trailing fluff after a stronger head noun (e.g., "Hess Law Firm"), drop the designator and keep the head noun ("Hess Law").
-    7) Article rule: PRESERVE "The" if it's already part of the original company name (e.g., "The Wellington Group" stays "The Wellington Group"). Do NOT ADD "the" to company names that don't already have it (e.g., "Lee Mandel & Associates" stays "Lee Mandel & Associates", not "the Lee Mandel & Associates").
-    8) Cleanup: preserve obvious stylization (CamelCase, numerals, &), normalize commas/spaces, and avoid adding or inventing words.
+    8) Article rule: PRESERVE "The" if it's already part of the original company name (e.g., "The Wellington Group" stays "The Wellington Group"). Do NOT ADD "the" to company names that don't already have it (e.g., "Lee Mandel & Associates" stays "Lee Mandel & Associates", not "the Lee Mandel & Associates").
+    9) Cleanup: preserve obvious stylization (CamelCase, numerals, &), normalize commas/spaces, and avoid adding or inventing words.
 
     Return: {"canonical": "Brand Name"}
     """

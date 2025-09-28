@@ -15,7 +15,7 @@ from app.llm.postprocess import min_clean
 from app.stores import ann
 
 TTL_SECONDS = 60 * 60 * 24 * 365
-CACHE_VERSION = "v20"  # Reverted to previous working rule-based prompt
+CACHE_VERSION = "v21"  # Added smart capitalization for ALL CAPS company names
 
 # Fallback in-memory cache when Redis is unavailable
 _memory_cache: Dict[str, tuple[Dict[str, Any], float]] = {}
