@@ -15,7 +15,7 @@ from app.llm.postprocess import min_clean
 from app.stores import ann
 
 TTL_SECONDS = 60 * 60 * 24 * 365
-CACHE_VERSION = "v17"  # Simplified article rule: no 'the' for email personalization context
+CACHE_VERSION = "v18"  # Fixed article rule: preserve existing 'The', don't add new ones
 
 # Fallback in-memory cache when Redis is unavailable
 _memory_cache: Dict[str, tuple[Dict[str, Any], float]] = {}
