@@ -32,7 +32,10 @@ SYSTEM_PROMPT = dedent(
       • "Dental Studio" → "Dental" (keep industry, remove generic "Studio")
       • "Pet Boutique" → keep both (when both words are specific)
       • "Accounting Services" → "Accounting" (keep industry, remove "Services")
-    - Remove generic business descriptors: "and Associates", "Firm", "Services", "Studio", "Company", "Group" (unless it's part of a unique brand name)
+    - **Article-based exception**: When "The" precedes the name, keep the full firm name:
+      • "Hess Law Firm" → "Hess Law" (remove generic "Firm")
+      • "The Hess Law Firm" → "The Hess Law Firm" (official brand name with article)
+    - Remove generic business descriptors: "and Associates", "Firm", "Services", "Studio", "Company", "Group" (unless part of official brand with "The")
     - Keep industry-specific words: "Law", "Dental", "Medical", "Bookkeeping", "Accounting", "Pet", etc.
     - Keep numbers and alphanumerics that are part of the brand ("Studio 54", "3M").
     - Replace "&" with "and" unless the ampersand is integral to the brand (e.g., "AT&T" stays "AT&T").
@@ -322,6 +325,28 @@ FEW_SHOTS: List[Tuple[str, dict]] = [
             "is_new": False,
             "confidence": 0.96,
             "reason": "Converted ALL CAPS to Title Case; kept 'Group' as part of brand name; removed LLC"
+        },
+    ),
+    (
+        "Hess Law Firm",
+        {
+            "canonical": "Hess Law",
+            "canonical_with_article": "Hess Law",
+            "article_policy": "none",
+            "is_new": False,
+            "confidence": 0.96,
+            "reason": "Kept industry word 'Law'; removed generic 'Firm' (no article prefix)"
+        },
+    ),
+    (
+        "The Hess Law Firm",
+        {
+            "canonical": "The Hess Law Firm",
+            "canonical_with_article": "The Hess Law Firm",
+            "article_policy": "official",
+            "is_new": False,
+            "confidence": 0.96,
+            "reason": "Official brand name with 'The' prefix; kept full 'Law Firm' as part of brand identity"
         },
     ),
 ]
