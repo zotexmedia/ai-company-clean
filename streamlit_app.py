@@ -133,12 +133,8 @@ def clean_company_names(df: pd.DataFrame, company_column: str) -> pd.DataFrame:
         
         if result and result.get("result"):
             original_row["Cleaned_Company_Name"] = result["result"]["canonical"]
-            original_row["Confidence"] = result["result"]["confidence"]
-            original_row["Reason"] = result["result"]["reason"]
         else:
             original_row["Cleaned_Company_Name"] = "ERROR"
-            original_row["Confidence"] = 0.0
-            original_row["Reason"] = result.get("error", "Unknown error") if result else "Processing error"
         
         cleaned_data.append(original_row)
     
@@ -190,15 +186,21 @@ def main():
                 
                 # Process button
                 if st.button("🧹 Clean Company Names", type="primary"):
+                    # Start timer
+                    start_time = time.time()
+                    
                     with st.spinner("Processing..."):
                         result_df = clean_company_names(df, company_column)
                     
+                    # Calculate processing time
+                    processing_time = time.time() - start_time
+                    
                     if result_df is not None:
-                        st.success("✅ Processing complete!")
+                        st.success(f"✅ Processing complete! Took {processing_time:.1f} seconds")
                         
                         # Show results preview
                         st.markdown("### Results Preview")
-                        preview_cols = [company_column, "Cleaned_Company_Name", "Confidence", "Reason"]
+                        preview_cols = [company_column, "Cleaned_Company_Name"]
                         available_cols = [col for col in preview_cols if col in result_df.columns]
                         st.dataframe(result_df[available_cols].head(10), use_container_width=True)
                         
@@ -216,16 +218,17 @@ def main():
                         )
                         
                         # Stats
-                        high_confidence = len(result_df[result_df["Confidence"] >= 0.9])
                         total_processed = len(result_df)
+                        successful_cleanings = len(result_df[result_df["Cleaned_Company_Name"] != "ERROR"])
+                        processing_rate = total_processed / processing_time if processing_time > 0 else 0
                         
                         col1, col2, col3 = st.columns(3)
                         with col1:
                             st.metric("Total Processed", total_processed)
                         with col2:
-                            st.metric("High Confidence (≥90%)", high_confidence)
+                            st.metric("Successful Cleanings", successful_cleanings)
                         with col3:
-                            st.metric("Success Rate", f"{(high_confidence/total_processed)*100:.1f}%")
+                            st.metric("Processing Rate", f"{processing_rate:.1f} companies/sec")
         
         except Exception as e:
             st.error(f"Error reading CSV file: {str(e)}")
