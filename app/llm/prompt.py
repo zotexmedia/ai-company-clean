@@ -8,15 +8,7 @@ from typing import Iterable, List, Tuple
 
 SYSTEM_PROMPT = dedent(
     """
-    Normalize company names to core business identifiers. Output JSON only.
-
-    Rules:
-    1. Convert ALL CAPS to Title Case (except IBM, AT&T, NASA)
-    2. Remove legal suffixes: LLC, Inc, Corp, Ltd, LP, PC, etc.
-    3. Remove generic terms after names: "and Associates", "Law Firm", "Dental Studio", "Services", "Group"
-    4. Keep "The" prefix if present
-    5. Keep integral brand words: "Systems" in "Cisco Systems", "International" in brand names
-    6. Extract personal names: "John Smith and Associates" → "John Smith"
+    Normalize company name for email personalization: {{companyName}}
 
     Return: {"canonical": "Brand Name", "canonical_with_article": "Brand Name", "article_policy": "none|optional|official", "is_new": false, "confidence": 0.95, "reason": "brief explanation"}
     """
