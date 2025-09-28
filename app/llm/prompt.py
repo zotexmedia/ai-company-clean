@@ -90,8 +90,10 @@ USER_TEMPLATE = dedent(
 
     Guidelines to apply:
     • Follow the rules and the definite article policy exactly.
+    • **MANDATORY**: Convert ALL CAPS words to Title Case (except established acronyms like IBM, AT&T)
     • Return only valid JSON that matches the schema.
     • Always include the "reason" field with a brief explanation of what was kept or removed.
+    • Your "canonical" field must NEVER contain ALL CAPS words unless they are established acronyms.
     """
 ).strip()
 
