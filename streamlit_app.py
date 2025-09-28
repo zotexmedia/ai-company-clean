@@ -22,8 +22,8 @@ API_URL = "https://ai-company-clean.onrender.com/normalize"
 def process_batch(batch, batch_num, total_batches):
     """Process a single batch of records."""
     try:
-        # Longer timeout for large batches under concurrent load
-        timeout = 120 if len(batch) > 30 else 90
+        # Extended timeout for GPT-5 Nano processing
+        timeout = 180 if len(batch) > 30 else 150
         response = requests.post(
             API_URL,
             json={"records": batch},
