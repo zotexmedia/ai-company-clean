@@ -57,37 +57,72 @@ def _extract_structured(message: Any) -> Dict[str, Any]:
 
 def _process_single_item(item: Dict[str, Any], schema: Dict[str, Any]) -> Dict[str, Any]:
     """Process a single item through the LLM."""
-    response_format = {
-        "type": "json_schema",
-        "json_schema": {
-            "name": "CompanyCanon",
-            "schema": schema,
-            "strict": True,
-        },
-    }
-    
     retry_suffix = item.get("retry_suffix") if isinstance(item, dict) else None
     conversation = build_conversation(item["raw_name"], retry_suffix=retry_suffix)
     logger.debug("Invoking OpenAI for id=%s", item["id"])
     
-    rsp = get_client().chat.completions.create(
-        model=MODEL_NAME,
-        messages=conversation,
-        temperature=0,
-        response_format=response_format,
-    )
-    
-    if not rsp.choices:
-        raise LLMCallError("Response missing choices")
-    
-    payload = _extract_structured(rsp.choices[0].message)
-    
-    return {
-        "id": item["id"],
-        "raw_name": item["raw_name"],
-        "payload": payload,
-        "usage": getattr(rsp, "usage", None),
-    }
+    if MODEL_NAME.startswith("gpt-5"):
+        # Use Responses API for GPT-5 models
+        text_format = {
+            "type": "json_schema",
+            "name": "CompanyCanon",
+            "schema": schema,
+            "strict": True,
+        }
+        
+        rsp = get_client().responses.create(
+            model=MODEL_NAME,
+            input=conversation,
+            text={"format": text_format},
+        )
+        
+        # Parse response from Responses API
+        if not rsp.output:
+            raise LLMCallError("Response missing output")
+            
+        # Find the message with JSON content
+        for output_item in rsp.output:
+            if output_item.type == "message" and output_item.role == "assistant":
+                for content_item in output_item.content:
+                    if content_item.type == "output_text":
+                        payload = json.loads(content_item.text)
+                        return {
+                            "id": item["id"],
+                            "raw_name": item["raw_name"],
+                            "payload": payload,
+                            "usage": getattr(rsp, "usage", None),
+                        }
+        
+        raise LLMCallError("No valid JSON content found in response")
+    else:
+        # Use Chat Completions API for GPT-4 models
+        response_format = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "CompanyCanon",
+                "schema": schema,
+                "strict": True,
+            },
+        }
+        
+        rsp = get_client().chat.completions.create(
+            model=MODEL_NAME,
+            messages=conversation,
+            temperature=0,
+            response_format=response_format,
+        )
+        
+        if not rsp.choices:
+            raise LLMCallError("Response missing choices")
+        
+        payload = _extract_structured(rsp.choices[0].message)
+        
+        return {
+            "id": item["id"],
+            "raw_name": item["raw_name"],
+            "payload": payload,
+            "usage": getattr(rsp, "usage", None),
+        }
 
 def normalize_batch_gpt4o_mini(items: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Call OpenAI with concurrent processing for better performance."""
