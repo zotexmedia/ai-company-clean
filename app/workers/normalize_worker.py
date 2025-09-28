@@ -20,7 +20,7 @@ from app.workers.llm_client import LLMCallError, normalize_batch_gpt4o_mini, loa
 
 logger = logging.getLogger(__name__)
 
-BATCH_SIZE = int(os.getenv("BATCH_SIZE", 64))
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", 100))  # Increased for better performance
 INVALID_SUFFIX = "Invalid JSON, return valid JSON only."
 
 

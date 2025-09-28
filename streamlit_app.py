@@ -33,24 +33,38 @@ def process_batch(batch, batch_num, total_batches):
         return batch_num, f"Error: {str(e)}"
 
 def clean_company_names(df: pd.DataFrame, company_column: str) -> pd.DataFrame:
-    """Clean company names using the API with concurrent processing."""
-    # Prepare records for API
+    """Clean company names using the API with concurrent processing and duplicate detection."""
+    # Detect duplicates and create mapping
+    unique_names = {}  # raw_name -> first_occurrence_idx
+    duplicate_mapping = {}  # row_idx -> original_row_idx
+    
+    # Prepare records for API, tracking duplicates
     records = []
     for idx, row in df.iterrows():
-        records.append({
-            "id": f"row-{idx}",
-            "raw_name": str(row[company_column]),
-            "source": "csv",
-            "country_hint": "US"
-        })
+        raw_name = str(row[company_column]).strip()
+        
+        if raw_name in unique_names:
+            # This is a duplicate - map it to the original
+            duplicate_mapping[idx] = unique_names[raw_name]
+        else:
+            # First occurrence - add to processing queue
+            unique_names[raw_name] = idx
+            records.append({
+                "id": f"row-{idx}",
+                "raw_name": raw_name,
+                "source": "csv",
+                "country_hint": "US"
+            })
+    
+    st.info(f"🔄 Found {len(df) - len(records)} duplicates. Processing {len(records)} unique names instead of {len(df)}.")
     
     # Create progress tracking
     progress_bar = st.progress(0)
     status_text = st.empty()
     
-    # Process in smaller concurrent batches
-    batch_size = 20  # Smaller batches for better concurrency
-    max_workers = 5   # Concurrent requests
+    # Process in concurrent batches - optimized for speed
+    batch_size = 50   # Larger batches for efficiency  
+    max_workers = 15  # High concurrency for speed
     
     # Create batches
     batches = []
@@ -95,20 +109,34 @@ def clean_company_names(df: pd.DataFrame, company_column: str) -> pd.DataFrame:
     progress_bar.empty()
     status_text.empty()
     
-    # Create results DataFrame
-    cleaned_data = []
+    # Create results mapping from API responses
+    results_by_idx = {}
     for result in flattened_results:
         row_idx = int(result["id"].split("-")[1])
-        original_row = df.iloc[row_idx].copy()
+        results_by_idx[row_idx] = result
+    
+    # Create results DataFrame, handling duplicates
+    cleaned_data = []
+    for idx, row in df.iterrows():
+        original_row = row.copy()
         
-        if result.get("result"):
+        # Check if this row is a duplicate
+        if idx in duplicate_mapping:
+            # Use result from the original occurrence
+            source_idx = duplicate_mapping[idx]
+            result = results_by_idx.get(source_idx)
+        else:
+            # Use direct result
+            result = results_by_idx.get(idx)
+        
+        if result and result.get("result"):
             original_row["Cleaned_Company_Name"] = result["result"]["canonical"]
             original_row["Confidence"] = result["result"]["confidence"]
             original_row["Reason"] = result["result"]["reason"]
         else:
             original_row["Cleaned_Company_Name"] = "ERROR"
             original_row["Confidence"] = 0.0
-            original_row["Reason"] = result.get("error", "Unknown error")
+            original_row["Reason"] = result.get("error", "Unknown error") if result else "Processing error"
         
         cleaned_data.append(original_row)
     
