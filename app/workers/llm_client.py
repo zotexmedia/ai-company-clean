@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Sequence
 
 from openai import OpenAI
-from openai.types.responses import ResponseFormatTextJSONSchemaConfig, ResponseTextConfig
 
 from app.llm.prompt import build_conversation
 
@@ -55,13 +54,13 @@ def normalize_batch_gpt4o_mini(items: Sequence[Dict[str, Any]]) -> List[Dict[str
     schema = load_schema()
     results: List[Dict[str, Any]] = []
 
-    text_cfg = ResponseTextConfig(
-        format=ResponseFormatTextJSONSchemaConfig(
-            type="json_schema",
-            name="CompanyCanon",
-            schema=schema,
-        )
-    )
+    text_cfg: Dict[str, Any] = {
+        "format": {
+            "type": "json_schema",
+            "name": "CompanyCanon",
+            "schema": schema,
+        }
+    }
 
     for item in items:
         retry_suffix = item.get("retry_suffix") if isinstance(item, dict) else None
