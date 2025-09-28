@@ -62,9 +62,9 @@ def clean_company_names(df: pd.DataFrame, company_column: str) -> pd.DataFrame:
     progress_bar = st.progress(0)
     status_text = st.empty()
     
-    # Process in concurrent batches - optimized for speed
+    # Process in concurrent batches - balanced for speed and reliability
     batch_size = 50   # Larger batches for efficiency  
-    max_workers = 15  # High concurrency for speed
+    max_workers = 8   # Conservative concurrency to avoid rate limiting
     
     # Create batches
     batches = []

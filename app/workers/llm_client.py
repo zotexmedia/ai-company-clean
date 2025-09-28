@@ -100,8 +100,8 @@ def normalize_batch_gpt4o_mini(items: Sequence[Dict[str, Any]]) -> List[Dict[str
             results.append(_process_single_item(item, schema))
         return results
     
-    # For larger batches, use concurrent processing
-    max_workers = min(10, len(items))  # Limit concurrent OpenAI calls
+    # For larger batches, use concurrent processing with conservative limits
+    max_workers = min(5, len(items))  # Conservative limit to avoid rate limiting
     results = [None] * len(items)
     
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -115,15 +115,15 @@ def normalize_batch_gpt4o_mini(items: Sequence[Dict[str, Any]]) -> List[Dict[str
         for future in concurrent.futures.as_completed(future_to_index):
             index = future_to_index[future]
             try:
-                results[index] = future.result()
+                result = future.result()
+                results[index] = result
             except Exception as e:
-                logger.error("Error processing item %d: %s", index, str(e))
-                # Create error result
+                logger.error("Error processing item %d (%s): %s", index, items[index]["raw_name"], str(e))
+                # Create error result that will be handled by retry logic
                 results[index] = {
                     "id": items[index]["id"],
                     "raw_name": items[index]["raw_name"],
                     "payload": None,
-                    "error": str(e),
                     "usage": None,
                 }
     

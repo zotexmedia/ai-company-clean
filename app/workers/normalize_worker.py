@@ -158,7 +158,8 @@ class NormalizationService:
                 try:
                     self.validator.validate(payload)
                 except ValidationError as err:
-                    logger.warning("Invalid JSON schema for id %s (attempt %s): %s", pending_item.id, attempt + 1, err)
+                    logger.warning("Invalid JSON schema for id %s (attempt %s): %s. Raw payload: %s", 
+                                 pending_item.id, attempt + 1, err, payload)
                     if attempt == 0:
                         next_retry.append(PendingItem(
                             id=pending_item.id,
