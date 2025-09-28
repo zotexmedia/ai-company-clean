@@ -220,7 +220,7 @@ def few_shot_messages() -> Iterable[dict]:
     for raw, payload in FEW_SHOTS:
         yield {
             "role": "user",
-            "content": [{"type": "text", "text": build_user_message(raw)}],
+            "content": [{"type": "input_text", "text": build_user_message(raw)}],
         }
         yield {
             "role": "assistant",
@@ -235,10 +235,10 @@ def few_shot_messages() -> Iterable[dict]:
 
 def build_conversation(raw_name: str, retry_suffix: str | None = None) -> List[dict]:
     return [
-        {"role": "system", "content": [{"type": "text", "text": SYSTEM_PROMPT}]},
+        {"role": "system", "content": [{"type": "input_text", "text": SYSTEM_PROMPT}]},
         *few_shot_messages(),
         {
             "role": "user",
-            "content": [{"type": "text", "text": build_user_message(raw_name, retry_suffix=retry_suffix)}],
+            "content": [{"type": "input_text", "text": build_user_message(raw_name, retry_suffix=retry_suffix)}],
         },
     ]
