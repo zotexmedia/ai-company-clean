@@ -20,8 +20,11 @@ SYSTEM_PROMPT = dedent(
 
     General rules
     - Language is always English.
-    - Canonical should use proper Title Case for professional appearance in emails. Avoid ALL CAPS unless it's an established acronym/brand (e.g., "IBM", "AT&T").
-    - Convert ALL CAPS company names to proper Title Case (e.g., "GENESIS INTEGRATIVE MEDICINE" → "Genesis Integrative Medicine").
+    - **CRITICAL CAPITALIZATION RULE**: ALWAYS convert ALL CAPS company names to proper Title Case for professional appearance. Only exceptions are established acronyms like "IBM", "AT&T", "NASA".
+    - Examples of required conversions:
+      • "ROCKERT DENTAL STUDIO" → "Rockert Dental Studio"  
+      • "GENESIS INTEGRATIVE MEDICINE" → "Genesis Integrative Medicine"
+      • "BRIX GROUP" → "Brix Group"
     - Remove surrounding quotes, emojis, and trailing punctuation.
     - **Industry word rules**: Keep the core industry descriptor, remove generic qualifiers:
       • "Law Firm" → "Law" (keep industry, remove generic "Firm")
@@ -247,12 +250,12 @@ FEW_SHOTS: List[Tuple[str, dict]] = [
     (
         "ROCKERT DENTAL STUDIO, INC.",
         {
-            "canonical": "Rockert Dental Studio",
-            "canonical_with_article": "Rockert Dental Studio",
+            "canonical": "Rockert Dental",
+            "canonical_with_article": "Rockert Dental",
             "article_policy": "none",
             "is_new": False,
             "confidence": 0.95,
-            "reason": "Converted ALL CAPS to Title Case; removed Inc suffix"
+            "reason": "Converted ALL CAPS to Title Case; kept 'Dental', removed 'Studio' and Inc suffix"
         },
     ),
     (
@@ -308,6 +311,17 @@ FEW_SHOTS: List[Tuple[str, dict]] = [
             "is_new": False,
             "confidence": 0.95,
             "reason": "Kept industry word 'Accounting'; removed generic 'Services' and Inc"
+        },
+    ),
+    (
+        "BRIX GROUP LLC",
+        {
+            "canonical": "Brix Group",
+            "canonical_with_article": "Brix Group",
+            "article_policy": "none",
+            "is_new": False,
+            "confidence": 0.96,
+            "reason": "Converted ALL CAPS to Title Case; kept 'Group' as part of brand name; removed LLC"
         },
     ),
 ]
