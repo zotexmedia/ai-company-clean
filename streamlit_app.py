@@ -22,10 +22,12 @@ API_URL = "https://ai-company-clean.onrender.com/normalize"
 def process_batch(batch, batch_num, total_batches):
     """Process a single batch of records."""
     try:
+        # Longer timeout for large batches under concurrent load
+        timeout = 120 if len(batch) > 30 else 90
         response = requests.post(
             API_URL,
             json={"records": batch},
-            timeout=60
+            timeout=timeout
         )
         response.raise_for_status()
         return batch_num, response.json()["results"]
@@ -64,7 +66,7 @@ def clean_company_names(df: pd.DataFrame, company_column: str) -> pd.DataFrame:
     
     # Process in concurrent batches - balanced for speed and reliability
     batch_size = 50   # Larger batches for efficiency  
-    max_workers = 8   # Conservative concurrency to avoid rate limiting
+    max_workers = 6   # More conservative concurrency to prevent timeouts
     
     # Create batches
     batches = []
