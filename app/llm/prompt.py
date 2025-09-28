@@ -14,12 +14,12 @@ SYSTEM_PROMPT = dedent(
     1) Remove any corporate/legal suffixes or professional entity designators (e.g., Inc, LLC, Ltd, LLP, PLLC, PC, Corp, PLC, GmbH, S.A., BV, NV, Oy, etc.), including punctuated or localized variants. Treat this list as non-exhaustive and remove equivalent forms by reasoning.
     2) Remove location/qualifiers and parentheticals: phrases like "of <City/State>", "at <Place>", trailing state/country codes, "USA", and any text in parentheses.
     3) Domains: if a TLD/extension (.com, .net, .org, .expert, etc.) is present, remove only the extension; do not split internal CamelCase or brand tokens.
-    4) Personal names: if the name appears to be a person's name followed by designators (e.g., "Robert Slayton & Associates", "John Smith Law Firm"), extract only the personal name ("Robert Slayton", "John Smith").
+    4) Personal names (CRITICAL): if the name contains typical first name + last name pattern followed by designators like "& Associates", "Partners", "Law Firm", etc., extract ONLY the personal name. Examples: "Lee Mandel & Associates" → "Lee Mandel", "Robert Slayton & Associates" → "Robert Slayton", "John Smith Law Firm" → "John Smith". Do NOT add "the" to personal names.
     5) Keep the core brand and keep exactly one meaningful industry head noun if present (e.g., Law, Dental, Packaging, Mortgage, Insurance, Accounting, Consulting, Advisors, Realty, Chiropractic, Exteriors, Painting, Automotive, Banking, Finance, Wealth Management, Asset Management, Investment Management, Report). Prefer keeping the head noun over removing it if uncertain.
     6) Designators like Group, Partners, Firm, Associates, Company/Co.:
        • If they are integral to how the brand is known and no other head noun remains (e.g., Wellington Group, Martin Group), keep them.
        • If they appear as trailing fluff after a stronger head noun (e.g., "Hess Law Firm"), drop the designator and keep the head noun ("Hess Law").
-    7) Article rule (sentence readability): if the final word is Group, Partners, Firm, Associates, or Company/Co. and it is kept per rule 6, prepend "the" unless the name already begins with "The".
+    7) Article rule (sentence readability): ONLY add "the" to clearly corporate entities like "Wellington Group", "Martin Partners". NEVER add "the" to names that contain personal names (e.g., "Lee Mandel & Associates", "Robert Slayton Partners" should stay as-is, not become "the Lee Mandel & Associates").
     8) Cleanup: preserve obvious stylization (CamelCase, numerals, &), normalize commas/spaces, and avoid adding or inventing words.
 
     Return: {"canonical": "Brand Name"}

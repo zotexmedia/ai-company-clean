@@ -15,7 +15,7 @@ from app.llm.postprocess import min_clean
 from app.stores import ann
 
 TTL_SECONDS = 60 * 60 * 24 * 365
-CACHE_VERSION = "v13"  # Fixed personal name extraction rule precedence
+CACHE_VERSION = "v15"  # Fixed article rule to never add 'the' to personal names
 
 # Fallback in-memory cache when Redis is unavailable
 _memory_cache: Dict[str, tuple[Dict[str, Any], float]] = {}
