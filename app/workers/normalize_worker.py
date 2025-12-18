@@ -15,6 +15,7 @@ from jsonschema import Draft7Validator, ValidationError
 from app.api.schemas import CanonicalResult, NormalizeRecord, NormalizeResponseItem
 from app.llm.postprocess import GuardrailResult, apply_guardrails, redact_for_logging
 from app.stores.cache import cache_get, cache_set, exact_cache_key, near_dupe_lookup
+from app.stores.ann import get_index
 from app.stores.db import JobRun, JobStatus, get_job, record_job, set_job_status, upsert_alias_result
 from app.workers.llm_client import LLMCallError, normalize_batch_gpt4o_mini, load_schema
 
@@ -124,11 +125,16 @@ class NormalizationService:
         if pending:
             metrics["llm_calls"] += len(pending)
             successes, failed = self._call_llm_with_retry(pending)
+            # Get ANN index for storing aliases (if PostgreSQL is configured)
+            ann_index = get_index()
             for item_id, payload in successes.items():
                 record = lookup_by_id[item_id]
                 guard = apply_guardrails(record.raw_name, payload)
                 cache_set(cache_key_by_id[item_id], payload)
                 payload_by_cache_key[cache_key_by_id[item_id]] = payload
+                # Store alias in PostgreSQL for near-duplicate matching
+                if hasattr(ann_index, 'add_alias'):
+                    ann_index.add_alias(record.raw_name, payload.get("canonical", ""), payload)
                 # upsert_alias_result(record.raw_name, guard, record.source, getattr(job, "id", None))  # Disabled for performance
                 outputs.append(self._to_response(record, guard, cached=False))
 
