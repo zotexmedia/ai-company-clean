@@ -57,7 +57,9 @@ class PgVectorIndex(BaseANNIndex):
                 if not row:
                     return None
                 raw, score, payload = row
-                cache_key = f"norm:v1:{min_clean(raw)}"
+                # Lazy import to avoid circular dependency with cache.py
+                from app.stores.cache import exact_cache_key
+                cache_key = exact_cache_key(raw)
                 return NearDupeMatch(raw_name=raw, score=score, cache_key=cache_key, payload=payload)
 
 

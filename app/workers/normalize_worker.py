@@ -72,23 +72,43 @@ class NormalizationService:
         lookup_by_id: Dict[str, NormalizeRecord] = {}
         cache_key_by_id: Dict[str, str] = {}
 
+        # Cache metrics
+        metrics = {"cache_hits": 0, "near_dupe_hits": 0, "llm_calls": 0, "batch_dedup": 0}
+
+        # Track seen cache keys within this batch for deduplication
+        seen_in_batch: Dict[str, str] = {}  # cache_key -> first record's id
+        deferred_duplicates: List[Tuple[NormalizeRecord, str]] = []  # (record, cache_key)
+
         for record in chunk:
             cache_key = exact_cache_key(record.raw_name)
+
+            # Check if duplicate within same batch (dedup before cache check)
+            if cache_key in seen_in_batch:
+                metrics["batch_dedup"] += 1
+                deferred_duplicates.append((record, cache_key))
+                continue
+
             cached_payload = cache_get(cache_key)
             if cached_payload:
+                metrics["cache_hits"] += 1
                 guard = apply_guardrails(record.raw_name, cached_payload)
                 outputs.append(self._to_response(record, guard, cached=True))
+                seen_in_batch[cache_key] = record.id
                 # upsert_alias_result(record.raw_name, guard, record.source, getattr(job, "id", None))  # Disabled for performance
                 continue
 
             near_payload = near_dupe_lookup(record.raw_name)
             if near_payload:
+                metrics["near_dupe_hits"] += 1
                 guard = apply_guardrails(record.raw_name, near_payload)
                 cache_set(cache_key, near_payload)
                 outputs.append(self._to_response(record, guard, cached=True))
+                seen_in_batch[cache_key] = record.id
                 # upsert_alias_result(record.raw_name, guard, record.source, getattr(job, "id", None))  # Disabled for performance
                 continue
 
+            # Mark this cache_key as seen (will be processed by LLM)
+            seen_in_batch[cache_key] = record.id
             pending.append(PendingItem(
                 id=record.id,
                 raw_name=record.raw_name,
@@ -98,12 +118,17 @@ class NormalizationService:
             lookup_by_id[record.id] = record
             cache_key_by_id[record.id] = cache_key
 
+        # Track payloads by cache_key for deferred duplicate resolution
+        payload_by_cache_key: Dict[str, Dict] = {}
+
         if pending:
+            metrics["llm_calls"] += len(pending)
             successes, failed = self._call_llm_with_retry(pending)
             for item_id, payload in successes.items():
                 record = lookup_by_id[item_id]
                 guard = apply_guardrails(record.raw_name, payload)
                 cache_set(cache_key_by_id[item_id], payload)
+                payload_by_cache_key[cache_key_by_id[item_id]] = payload
                 # upsert_alias_result(record.raw_name, guard, record.source, getattr(job, "id", None))  # Disabled for performance
                 outputs.append(self._to_response(record, guard, cached=False))
 
@@ -118,6 +143,32 @@ class NormalizationService:
                     )
                 )
                 errors.append(f"{record.id}:{error}")
+
+        # Process deferred duplicates - reuse results from first occurrence
+        for record, cache_key in deferred_duplicates:
+            # Try to get from LLM results first, then from cache
+            payload = payload_by_cache_key.get(cache_key) or cache_get(cache_key)
+            if payload:
+                guard = apply_guardrails(record.raw_name, payload)
+                outputs.append(self._to_response(record, guard, cached=True))
+            else:
+                # First occurrence failed, propagate error
+                outputs.append(
+                    NormalizeResponseItem(
+                        id=record.id,
+                        raw_name=record.raw_name,
+                        cached=False,
+                        error="duplicate_of_failed_item",
+                    )
+                )
+                errors.append(f"{record.id}:duplicate_of_failed_item")
+
+        # Log cache metrics
+        logger.info(
+            "Batch complete: %d cache hits, %d near-dupe hits, %d LLM calls, %d batch dedup",
+            metrics["cache_hits"], metrics["near_dupe_hits"],
+            metrics["llm_calls"], metrics["batch_dedup"]
+        )
 
         return outputs, errors
 

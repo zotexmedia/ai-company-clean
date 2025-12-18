@@ -5,3 +5,4 @@ supabase/.temp/
 .env
 .venv/
 .DS_Store
+.mcp.json
