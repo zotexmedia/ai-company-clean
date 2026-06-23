@@ -155,6 +155,60 @@ def apply_guardrails(raw_name: str, payload: Dict[str, object]) -> GuardrailResu
     )
 
 
+# Tokens/markers that trigger the LLM's SEMANTIC rules (system-prompt rules 3,5,6,7):
+# locations ("of X","at X", state/USA), personal-name extraction (& Associates, Partners,
+# Law Firm, Sons), trailing-designator judgment (Group/Firm/Partners/Co), and multi-entity
+# joiners. The deterministic cleaner CANNOT replicate these, so any hit -> defer to the LLM.
+_DEFER_TO_LLM_RE = re.compile(
+    r"(?:\bdba\b|d/b/a|\bt/a\b|\baka\b|\bfka\b"          # trade-name / aliases
+    r"|[/()#@]|\d{3,}"                                     # multi-name, codes, store numbers
+    r"|\bof\b|\bat\b|\busa\b"                              # location qualifiers (rule 3)
+    r"|&|\band\b"                                          # partnerships / personal names
+    r"|\bassociates?\b|\bpartners?\b|\bgroup\b|\bfirm\b"   # designators needing judgment (5,6,7)
+    r"|\bsons?\b|\bbrothers?\b|\badvisors?\b|\bco\b)",     # ...
+    re.IGNORECASE,
+)
+
+# A leading short ALL-CAPS token may be an acronym the cleaner would wrongly title-case
+# ("ABC" -> "Abc"). Defer those to the LLM (rule 1). Whitelisted acronyms are safe.
+_LEADING_ACRONYM_RE = re.compile(r"^[A-Z0-9&.]{2,4}\b")
+
+
+def deterministic_prefilter(raw_name: str) -> Optional[Dict[str, object]]:
+    """Return an LLM-equivalent payload IFF the name needs only *mechanical* cleaning
+    (legal-suffix strip + casing + spacing) with no semantic judgment. Otherwise None
+    (-> caller falls through to the LLM). Conservative by design: when in doubt, defer.
+    """
+    if not raw_name or not raw_name.strip():
+        return None
+    raw = raw_name.strip()
+    if _DEFER_TO_LLM_RE.search(raw):
+        return None
+    # Internal CamelCase (QuickBooks, FedEx, eBay, LinkedIn) would be wrongly title-cased
+    # by the deterministic cleaner -> defer to the LLM, which preserves brand stylization.
+    if re.search(r"[a-z][A-Z]", raw):
+        return None
+    # Risky ALL-CAPS acronym casing -> let the LLM judge (unless already whitelisted)
+    if raw.isupper():
+        lead = raw.split()
+        if lead and lead[0].lower() not in ACRONYM_WHITELIST and _LEADING_ACRONYM_RE.match(raw):
+            return None
+    cleaned = clean_company_name(raw)
+    if not cleaned:
+        return None
+    # cleaning must have only trimmed (kept the brand) and stayed short/simple
+    if token_overlap(raw, cleaned) < 0.6 or len(cleaned.split()) > 4:
+        return None
+    return {
+        "canonical": cleaned,
+        "canonical_with_article": cleaned,
+        "article_policy": "official" if cleaned.split()[:1] == ["The"] else "none",
+        "is_new": False,
+        "confidence": 0.9,
+        "reason": "deterministic_prefilter",
+    }
+
+
 def redact_for_logging(raw_name: str) -> str:
     """Return a lightly redacted form for observability."""
     tokens = raw_name.split()
@@ -166,6 +220,7 @@ def redact_for_logging(raw_name: str) -> str:
 __all__ = [
     "apply_guardrails",
     "clean_company_name",
+    "deterministic_prefilter",
     "GuardrailResult",
     "min_clean",
     "redact_for_logging",

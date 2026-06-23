@@ -13,7 +13,7 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 from jsonschema import Draft7Validator, ValidationError
 
 from app.api.schemas import CanonicalResult, NormalizeRecord, NormalizeResponseItem
-from app.llm.postprocess import GuardrailResult, apply_guardrails, redact_for_logging
+from app.llm.postprocess import GuardrailResult, apply_guardrails, deterministic_prefilter, redact_for_logging
 from app.stores.cache import cache_get, cache_set, exact_cache_key, near_dupe_lookup
 from app.stores.ann import get_index
 from app.stores.db import JobRun, JobStatus, get_job, record_job, set_job_status, upsert_alias_result
@@ -22,6 +22,9 @@ from app.workers.llm_client import LLMCallError, normalize_batch_gpt4o_mini, loa
 logger = logging.getLogger(__name__)
 
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", 500))  # Optimized for GPT-5 Mini rate limits
+# Flag-gated: when true, mechanically-simple names skip the LLM (deterministic clean).
+# Off by default so it can be A/B'd against the LLM before being trusted.
+PREFILTER_ENABLED = os.getenv("DETERMINISTIC_PREFILTER", "false").lower() == "true"
 INVALID_SUFFIX = "Invalid JSON, return valid JSON only."
 
 
@@ -74,7 +77,7 @@ class NormalizationService:
         cache_key_by_id: Dict[str, str] = {}
 
         # Cache metrics
-        metrics = {"cache_hits": 0, "near_dupe_hits": 0, "llm_calls": 0, "batch_dedup": 0}
+        metrics = {"cache_hits": 0, "near_dupe_hits": 0, "llm_calls": 0, "batch_dedup": 0, "prefilter_hits": 0}
 
         # Track seen cache keys within this batch for deduplication
         seen_in_batch: Dict[str, str] = {}  # cache_key -> first record's id
@@ -107,6 +110,18 @@ class NormalizationService:
                 seen_in_batch[cache_key] = record.id
                 # upsert_alias_result(record.raw_name, guard, record.source, getattr(job, "id", None))  # Disabled for performance
                 continue
+
+            # Deterministic pre-filter: mechanically-simple names skip the LLM entirely.
+            # Conservative — returns None (-> LLM) for anything needing semantic judgment.
+            if PREFILTER_ENABLED:
+                pf_payload = deterministic_prefilter(record.raw_name)
+                if pf_payload is not None:
+                    metrics["prefilter_hits"] += 1
+                    guard = apply_guardrails(record.raw_name, pf_payload)
+                    cache_set(cache_key, pf_payload)
+                    outputs.append(self._to_response(record, guard, cached=True))
+                    seen_in_batch[cache_key] = record.id
+                    continue
 
             # Mark this cache_key as seen (will be processed by LLM)
             seen_in_batch[cache_key] = record.id
@@ -171,8 +186,8 @@ class NormalizationService:
 
         # Log cache metrics
         logger.info(
-            "Batch complete: %d cache hits, %d near-dupe hits, %d LLM calls, %d batch dedup",
-            metrics["cache_hits"], metrics["near_dupe_hits"],
+            "Batch complete: %d cache hits, %d near-dupe hits, %d prefilter hits, %d LLM calls, %d batch dedup",
+            metrics["cache_hits"], metrics["near_dupe_hits"], metrics["prefilter_hits"],
             metrics["llm_calls"], metrics["batch_dedup"]
         )
 

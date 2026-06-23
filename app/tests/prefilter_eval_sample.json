@@ -1,0 +1,282 @@
+[
+  {
+    "raw": "Joe's Plumbing LLC",
+    "prefilter_handled": false,
+    "prefilter_output": null,
+    "llm_output": "Joe's Plumbing",
+    "match": null
+  },
+  {
+    "raw": "Sunrise Dental",
+    "prefilter_handled": true,
+    "prefilter_output": "Sunrise Dental",
+    "llm_output": "Sunrise Dental",
+    "match": true
+  },
+  {
+    "raw": "Apex Roofing Inc.",
+    "prefilter_handled": true,
+    "prefilter_output": "Apex Roofing",
+    "llm_output": "Apex Roofing",
+    "match": true
+  },
+  {
+    "raw": "Blue Sky Cleaning Services",
+    "prefilter_handled": true,
+    "prefilter_output": "Blue Sky Cleaning Services",
+    "llm_output": "Blue Sky Cleaning",
+    "match": false
+  },
+  {
+    "raw": "Riverstone Bakery",
+    "prefilter_handled": true,
+    "prefilter_output": "Riverstone Bakery",
+    "llm_output": "Riverstone Bakery",
+    "match": true
+  },
+  {
+    "raw": "Bright Smile Dentistry",
+    "prefilter_handled": true,
+    "prefilter_output": "Bright Smile Dentistry",
+    "llm_output": "Bright Smile Dentistry",
+    "match": true
+  },
+  {
+    "raw": "Evergreen Landscaping LLC",
+    "prefilter_handled": true,
+    "prefilter_output": "Evergreen Landscaping",
+    "llm_output": "Evergreen Landscaping",
+    "match": true
+  },
+  {
+    "raw": "Summit Auto Repair",
+    "prefilter_handled": true,
+    "prefilter_output": "Summit Auto Repair",
+    "llm_output": "Summit Auto Repair",
+    "match": true
+  },
+  {
+    "raw": "Golden Gate Painting",
+    "prefilter_handled": true,
+    "prefilter_output": "Golden Gate Painting",
+    "llm_output": "Golden Gate Painting",
+    "match": true
+  },
+  {
+    "raw": "Lakeside Veterinary Clinic",
+    "prefilter_handled": true,
+    "prefilter_output": "Lakeside Veterinary Clinic",
+    "llm_output": "Lakeside Veterinary Clinic",
+    "match": true
+  },
+  {
+    "raw": "BEYOND WORDS SPEECH THERAPY",
+    "prefilter_handled": true,
+    "prefilter_output": "Beyond Words Speech Therapy",
+    "llm_output": "Beyond Words Speech Therapy",
+    "match": true
+  },
+  {
+    "raw": "GREENLAND LANDSCAPING",
+    "prefilter_handled": true,
+    "prefilter_output": "Greenland Landscaping",
+    "llm_output": "Greenland Landscaping",
+    "match": true
+  },
+  {
+    "raw": "SUNRISE DENTAL",
+    "prefilter_handled": true,
+    "prefilter_output": "Sunrise Dental",
+    "llm_output": "Sunrise Dental",
+    "match": true
+  },
+  {
+    "raw": "ABC MEDICAL GROUP",
+    "prefilter_handled": false,
+    "prefilter_output": null,
+    "llm_output": "ABC Medical Group",
+    "match": null
+  },
+  {
+    "raw": "PRECISION AUTO BODY",
+    "prefilter_handled": true,
+    "prefilter_output": "Precision Auto Body",
+    "llm_output": "Precision Auto Body",
+    "match": true
+  },
+  {
+    "raw": "IBM CORPORATION",
+    "prefilter_handled": false,
+    "prefilter_output": null,
+    "llm_output": "IBM",
+    "match": null
+  },
+  {
+    "raw": "Joe's Plumbing of Dallas",
+    "prefilter_handled": false,
+    "prefilter_output": null,
+    "llm_output": "Joe's Plumbing",
+    "match": null
+  },
+  {
+    "raw": "Anago of Greater Newark",
+    "prefilter_handled": false,
+    "prefilter_output": null,
+    "llm_output": "Anago",
+    "match": null
+  },
+  {
+    "raw": "Stratus Building Solutions of Tampa",
+    "prefilter_handled": false,
+    "prefilter_output": null,
+    "llm_output": "Stratus Building Solutions",
+    "match": null
+  },
+  {
+    "raw": "Mr. Handyman of North Austin",
+    "prefilter_handled": false,
+    "prefilter_output": null,
+    "llm_output": "Mr. Handyman",
+    "match": null
+  },
+  {
+    "raw": "Coastal Cleaning USA",
+    "prefilter_handled": false,
+    "prefilter_output": null,
+    "llm_output": "Coastal Cleaning",
+    "match": null
+  },
+  {
+    "raw": "Lee Mandel & Associates",
+    "prefilter_handled": false,
+    "prefilter_output": null,
+    "llm_output": "Lee Mandel",
+    "match": null
+  },
+  {
+    "raw": "Hess Law Firm",
+    "prefilter_handled": false,
+    "prefilter_output": null,
+    "llm_output": "Hess Law",
+    "match": null
+  },
+  {
+    "raw": "Smith & Sons HVAC",
+    "prefilter_handled": false,
+    "prefilter_output": null,
+    "llm_output": "Smith & Sons HVAC",
+    "match": null
+  },
+  {
+    "raw": "The Wellington Group",
+    "prefilter_handled": false,
+    "prefilter_output": null,
+    "llm_output": "The Wellington Group",
+    "match": null
+  },
+  {
+    "raw": "Robert Slayton & Associates",
+    "prefilter_handled": false,
+    "prefilter_output": null,
+    "llm_output": "Robert Slayton",
+    "match": null
+  },
+  {
+    "raw": "Johnson Brothers Construction",
+    "prefilter_handled": false,
+    "prefilter_output": null,
+    "llm_output": "Johnson Brothers Construction",
+    "match": null
+  },
+  {
+    "raw": "Anderson Partners",
+    "prefilter_handled": false,
+    "prefilter_output": null,
+    "llm_output": "Anderson Partners",
+    "match": null
+  },
+  {
+    "raw": "Bob's Auto dba QuickFix",
+    "prefilter_handled": false,
+    "prefilter_output": null,
+    "llm_output": "QuickFix",
+    "match": null
+  },
+  {
+    "raw": "ABC Corp (formerly XYZ Inc)",
+    "prefilter_handled": false,
+    "prefilter_output": null,
+    "llm_output": "ABC",
+    "match": null
+  },
+  {
+    "raw": "Store #1234 Cleaning Co",
+    "prefilter_handled": false,
+    "prefilter_output": null,
+    "llm_output": "Cleaning",
+    "match": null
+  },
+  {
+    "raw": "H&R Block",
+    "prefilter_handled": false,
+    "prefilter_output": null,
+    "llm_output": "H&R Block",
+    "match": null
+  },
+  {
+    "raw": "Tom & Jerry's Pizza",
+    "prefilter_handled": false,
+    "prefilter_output": null,
+    "llm_output": "Tom & Jerry's Pizza",
+    "match": null
+  },
+  {
+    "raw": "The Bagel Shop",
+    "prefilter_handled": true,
+    "prefilter_output": "The Bagel Shop",
+    "llm_output": "The Bagel Shop",
+    "match": true
+  },
+  {
+    "raw": "The Maids",
+    "prefilter_handled": true,
+    "prefilter_output": "The Maids",
+    "llm_output": "The Maids",
+    "match": true
+  },
+  {
+    "raw": "QuickBooks Pro Services",
+    "prefilter_handled": true,
+    "prefilter_output": "Quickbooks Pro Services",
+    "llm_output": "QuickBooks Pro Services",
+    "match": false
+  },
+  {
+    "raw": "Mountain View Roofing",
+    "prefilter_handled": true,
+    "prefilter_output": "Mountain View Roofing",
+    "llm_output": "Mountain View Roofing",
+    "match": true
+  },
+  {
+    "raw": "Crystal Clear Windows",
+    "prefilter_handled": true,
+    "prefilter_output": "Crystal Clear Windows",
+    "llm_output": "Crystal Clear Windows",
+    "match": true
+  },
+  {
+    "raw": "Happy Paws Grooming",
+    "prefilter_handled": true,
+    "prefilter_output": "Happy Paws Grooming",
+    "llm_output": "Happy Paws Grooming",
+    "match": true
+  },
+  {
+    "raw": "Elite Fitness Studio",
+    "prefilter_handled": true,
+    "prefilter_output": "Elite Fitness Studio",
+    "llm_output": "Elite Fitness Studio",
+    "match": true
+  }
+]
