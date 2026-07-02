@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import hashlib
 import time
@@ -13,6 +14,8 @@ import redis
 
 from app.llm.postprocess import min_clean
 from app.stores import ann
+
+logger = logging.getLogger(__name__)
 
 TTL_SECONDS = 60 * 60 * 24 * 365
 CACHE_VERSION = "v21"  # Added smart capitalization for ALL CAPS company names
@@ -64,12 +67,22 @@ def _is_redis_available() -> bool:
     if _redis_available is not None and (now - _redis_checked_at) < REDIS_RECHECK_SECONDS:
         return _redis_available
 
+    previous = _redis_available
     try:
         get_client().ping()
         _redis_available = True
     except Exception:
         _redis_available = False
     _redis_checked_at = now
+
+    # Surface availability transitions so a Redis outage isn't silent: without this,
+    # the shared cache can go down and everything quietly serves from the ephemeral
+    # per-instance memory fallback with no signal.
+    if previous is not False and _redis_available is False:
+        logger.error("Redis unavailable — degrading to in-process memory cache (shared cache OFF); will re-probe in %ss", REDIS_RECHECK_SECONDS)
+    elif previous is False and _redis_available is True:
+        logger.warning("Redis recovered — resuming shared cache")
+
     return _redis_available
 
 def cache_get(key: str) -> Optional[Dict[str, Any]]:
