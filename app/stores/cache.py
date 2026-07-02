@@ -20,6 +20,10 @@ CACHE_VERSION = "v21"  # Added smart capitalization for ALL CAPS company names
 # Fallback in-memory cache when Redis is unavailable
 _memory_cache: Dict[str, tuple[Dict[str, Any], float]] = {}
 _redis_available = None
+_redis_checked_at = 0.0
+# Re-probe Redis on this cadence so a transient failure at boot (cold start, brief
+# blip) does NOT disable the shared cache for the whole process lifetime.
+REDIS_RECHECK_SECONDS = float(os.getenv("REDIS_RECHECK_SECONDS", "30"))
 
 
 def clear_memory_cache() -> None:
@@ -31,7 +35,18 @@ def clear_memory_cache() -> None:
 @lru_cache(maxsize=1)
 def get_client() -> redis.Redis:
     url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-    return redis.Redis.from_url(url, decode_responses=True)
+    # Bounded timeouts + pooling so a hung/slow Redis fails fast to the memory
+    # fallback instead of blocking a threadpool worker up to the OS TCP timeout.
+    return redis.Redis.from_url(
+        url,
+        decode_responses=True,
+        socket_timeout=float(os.getenv("REDIS_SOCKET_TIMEOUT", "2")),
+        socket_connect_timeout=float(os.getenv("REDIS_CONNECT_TIMEOUT", "2")),
+        socket_keepalive=True,
+        health_check_interval=30,
+        retry_on_timeout=True,
+        max_connections=int(os.getenv("REDIS_MAX_CONNECTIONS", "24")),
+    )
 
 
 def exact_cache_key(raw_name: str) -> str:
@@ -41,18 +56,21 @@ def exact_cache_key(raw_name: str) -> str:
 
 
 def _is_redis_available() -> bool:
-    """Check if Redis is available, cache result for performance."""
-    global _redis_available
-    if _redis_available is not None:
+    """Check if Redis is available. Result is cached for REDIS_RECHECK_SECONDS and
+    then re-probed — so a transient failure never latches Redis off permanently
+    (the previous bug: one failed ping disabled Redis for the whole process)."""
+    global _redis_available, _redis_checked_at
+    now = time.time()
+    if _redis_available is not None and (now - _redis_checked_at) < REDIS_RECHECK_SECONDS:
         return _redis_available
-    
+
     try:
         get_client().ping()
         _redis_available = True
-        return True
     except Exception:
         _redis_available = False
-        return False
+    _redis_checked_at = now
+    return _redis_available
 
 def cache_get(key: str) -> Optional[Dict[str, Any]]:
     # Try Redis first
@@ -75,6 +93,44 @@ def cache_get(key: str) -> Optional[Dict[str, Any]]:
             del _memory_cache[key]
     
     return None
+
+
+def cache_get_many(keys: list[str]) -> Dict[str, Optional[Dict[str, Any]]]:
+    """Batch fetch: one Redis MGET round-trip for the whole set instead of N
+    sequential GETs. Returns {key: payload_or_None}. Falls back to the in-memory
+    cache (per key) if Redis is unavailable, matching cache_get() semantics."""
+    result: Dict[str, Optional[Dict[str, Any]]] = {k: None for k in keys}
+    if not keys:
+        return result
+
+    unresolved = list(dict.fromkeys(keys))  # de-dup, preserve order
+
+    if _is_redis_available():
+        try:
+            values = get_client().mget(unresolved)
+            for k, payload in zip(unresolved, values):
+                if not payload:
+                    continue
+                try:
+                    result[k] = json.loads(payload)
+                except json.JSONDecodeError:
+                    result[k] = None
+            return result
+        except (redis.RedisError, ConnectionError):
+            # Redis failed mid-call → fall through to memory cache
+            pass
+
+    now = time.time()
+    for k in unresolved:
+        entry = _memory_cache.get(k)
+        if not entry:
+            continue
+        value, expiry = entry
+        if now < expiry:
+            result[k] = value
+        else:
+            del _memory_cache[k]
+    return result
 
 
 def cache_set(key: str, value: Dict[str, Any], ttl: int = TTL_SECONDS) -> None:
@@ -124,6 +180,7 @@ def warm_cache(entries: Dict[str, Dict[str, Any]]) -> None:
 
 __all__ = [
     "cache_get",
+    "cache_get_many",
     "cache_set",
     "clear_memory_cache",
     "exact_cache_key",

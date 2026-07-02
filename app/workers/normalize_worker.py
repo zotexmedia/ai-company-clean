@@ -14,7 +14,7 @@ from jsonschema import Draft7Validator, ValidationError
 
 from app.api.schemas import CanonicalResult, NormalizeRecord, NormalizeResponseItem
 from app.llm.postprocess import GuardrailResult, apply_guardrails, deterministic_prefilter, redact_for_logging
-from app.stores.cache import cache_get, cache_set, exact_cache_key, near_dupe_lookup
+from app.stores.cache import cache_get, cache_get_many, cache_set, exact_cache_key, near_dupe_lookup
 from app.stores.ann import get_index
 from app.stores.db import JobRun, JobStatus, get_job, record_job, set_job_status, upsert_alias_result
 from app.workers.llm_client import LLMCallError, normalize_batch_gpt4o_mini, load_schema
@@ -83,16 +83,20 @@ class NormalizationService:
         seen_in_batch: Dict[str, str] = {}  # cache_key -> first record's id
         deferred_duplicates: List[Tuple[NormalizeRecord, str]] = []  # (record, cache_key)
 
-        for record in chunk:
-            cache_key = exact_cache_key(record.raw_name)
+        # Compute cache keys once, then fetch the whole batch in a SINGLE Redis
+        # MGET round-trip instead of one GET per record (previously N serial
+        # round-trips — ~2.6s/batch to the cross-region Redis; now one hop).
+        records_with_keys = [(record, exact_cache_key(record.raw_name)) for record in chunk]
+        batch_cache = cache_get_many([key for _, key in records_with_keys])
 
+        for record, cache_key in records_with_keys:
             # Check if duplicate within same batch (dedup before cache check)
             if cache_key in seen_in_batch:
                 metrics["batch_dedup"] += 1
                 deferred_duplicates.append((record, cache_key))
                 continue
 
-            cached_payload = cache_get(cache_key)
+            cached_payload = batch_cache.get(cache_key)
             if cached_payload:
                 metrics["cache_hits"] += 1
                 guard = apply_guardrails(record.raw_name, cached_payload)
