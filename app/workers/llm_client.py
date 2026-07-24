@@ -15,7 +15,10 @@ from app.llm.prompt import build_conversation
 
 logger = logging.getLogger(__name__)
 
-MODEL_NAME = "gpt-5-mini"  # GPT-5 Mini: budget-optimized for high volume processing
+MODEL_NAME = "gpt-5-nano"  # GPT-5 Nano: ~2-3x cheaper than mini; A/B 2026-07-23 = 90% verdict-parity
+                           # vs mini on adversarial sample, ~100% on common names. Same Responses-API
+                           # path (startswith "gpt-5"). Blast radius small: GMaps skips the LLM entirely
+                           # and the IS cache is warm, so only net-new company names reach the model.
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "llm" / "structured_schema.json"
 
 
